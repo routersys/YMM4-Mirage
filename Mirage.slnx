@@ -10,6 +10,7 @@
     <BuildDependency Project="Mirage.Shader/Mirage.Shader.vcxproj" />
   </Project>
   <Project Path="Mirage.Tests/Mirage.Tests.csproj" />
+  <Project Path="Mirage.Harness/Mirage.Harness.csproj" />
   <Project Path="Mirage.Shader/Mirage.Shader.vcxproj">
     <BuildType Solution="*|*" Project="Release" />
     <Platform Solution="*|*" Project="Win32" />
