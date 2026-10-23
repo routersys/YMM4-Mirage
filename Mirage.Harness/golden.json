@@ -109,6 +109,30 @@
       "hash": "30B445AC2701CEE1E9424237B794538BECF6801D830E94AAFD509F7177DD944F"
     },
     {
+      "name": "shimmer-60",
+      "frames": [
+        0
+      ],
+      "hash": "CAA06A19282A1843C1111C548BFE3AD38C883E26A7FFF9714B64200B0B83E666"
+    },
+    {
+      "name": "shimmer-animated-frames",
+      "frames": [
+        0,
+        100,
+        200,
+        299
+      ],
+      "hash": "E53465A3C4350E2D81B485CB3759DAA406DD645C4621D1D356425F8EA06F2451"
+    },
+    {
+      "name": "shimmer-speed-3",
+      "frames": [
+        100
+      ],
+      "hash": "08218C9DF234A95AD2CEF284621DC35E728A7C534B040FC8336CC18E543BE149"
+    },
+    {
       "name": "superior-default",
       "frames": [
         0
