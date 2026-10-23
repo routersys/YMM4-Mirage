@@ -1,0 +1,185 @@
+{
+  "adapter": "Intel(R) Iris(R) Xe Graphics",
+  "driver": "32.0.101.7085",
+  "input": "synthetic 640x480 89838D8976198E40",
+  "canvas": "1280x720",
+  "cases": [
+    {
+      "name": "default",
+      "frames": [
+        0
+      ],
+      "hash": "D4E3CD94EAB77DF542EF71714131E0A021A0877066CC78EDE198E6D82451DA35"
+    },
+    {
+      "name": "eye-height-animated-frames",
+      "frames": [
+        0,
+        100,
+        200,
+        299
+      ],
+      "hash": "B2306D1416AE87372023DC3D6D0B68D4300E5472E9623D3FAF5B39BB059349E7"
+    },
+    {
+      "name": "heat-difference-animated-frames",
+      "frames": [
+        0,
+        100,
+        200,
+        299
+      ],
+      "hash": "4E609B2F9FD81F6A7FFC828848F3125183604A2E4EEE23162FAEE28B920E5D1D"
+    },
+    {
+      "name": "amount-0",
+      "frames": [
+        0
+      ],
+      "hash": "0A700F76CEDDBAD7C4B6A2C19D46939C1A93940E86C6EFEF1E5A53DB48D2A020"
+    },
+    {
+      "name": "amount-50",
+      "frames": [
+        0
+      ],
+      "hash": "83B106E7DF7FD29D7DC5C30FF7F56F6B24DA5E08FD76DAD4C377647FC7934BC7"
+    },
+    {
+      "name": "eye-height-10",
+      "frames": [
+        0
+      ],
+      "hash": "CE7BBCD98F89C7F1E4D3DB00C1C84DB02181338106DB70A8647FE628F2EBCD56"
+    },
+    {
+      "name": "heat-difference-8",
+      "frames": [
+        0
+      ],
+      "hash": "4EE6BD3CF73D5E5ADDD5C9B3F15EE794292F114180CE95A026F72543A5052EED"
+    },
+    {
+      "name": "heat-difference-55",
+      "frames": [
+        0
+      ],
+      "hash": "912F4A3758FABC79B518673F903F6ACDBE1498C8151A5C774763D45B73050C73"
+    },
+    {
+      "name": "heat-thickness-0.15",
+      "frames": [
+        0
+      ],
+      "hash": "015DBDF7072ADF92466E759F7B23D567B4F394673E29528F3932CBA59299866D"
+    },
+    {
+      "name": "heat-thickness-2.5",
+      "frames": [
+        0
+      ],
+      "hash": "2340658AD5CEB063EB5DD26FD4D2B328830246EA451F845ACBB6BC7FFB0326F1"
+    },
+    {
+      "name": "field-of-view-1",
+      "frames": [
+        0
+      ],
+      "hash": "782D09FDC8BB055595EF6961428870602ECA83E67940A3425428797308931C49"
+    },
+    {
+      "name": "field-of-view-12",
+      "frames": [
+        0
+      ],
+      "hash": "B593F2792A4BFCB1685E8AF0BA78174E3C57E9CCD3BAD3807134DBF8E4E544B2"
+    },
+    {
+      "name": "camera-pitch-0.3",
+      "frames": [
+        0
+      ],
+      "hash": "0471FEFFC3CA933BF5ED3CB48022407C26F6F0392A47DC27EC4D544B6F11EC52"
+    },
+    {
+      "name": "camera-pitch-minus-0.3",
+      "frames": [
+        0
+      ],
+      "hash": "7FD86EFBF3AB423CB313DEE711BB12D021D36D3E88CD088257C2BED28DD13AD2"
+    },
+    {
+      "name": "superior-default",
+      "frames": [
+        0
+      ],
+      "hash": "4A9501E20D1BF975BEFF21D8FB7C2EDD42F2500C89C2CADF2B2CE86200193F51"
+    },
+    {
+      "name": "superior-scene",
+      "frames": [
+        0
+      ],
+      "hash": "AB88F2AB9D74DAE6EFB7BCCAE062A78F4D144E98CD92109BA498ADD739903BC2"
+    },
+    {
+      "name": "superior-inversion-difference-4",
+      "frames": [
+        0
+      ],
+      "hash": "1A69833AE50D1FAA6AA2109ADA929657C6634A2D26C5B0BA3067105A46B00B87"
+    },
+    {
+      "name": "superior-inversion-difference-18",
+      "frames": [
+        0
+      ],
+      "hash": "9D4B23A59D554CAFB833314E877EEE3423FB03A22D633692E255DF1463776E02"
+    },
+    {
+      "name": "superior-inversion-height-25",
+      "frames": [
+        0
+      ],
+      "hash": "20E994A23391E13E71F7EB0A9D3EC793EF5BF4A25FC20D6DEA909ED7B27B4417"
+    },
+    {
+      "name": "superior-inversion-thickness-3",
+      "frames": [
+        0
+      ],
+      "hash": "DF476C7E83079D96F3DAC60B6B919D7439BA3BC391095704DA5F0B8B035E6D88"
+    },
+    {
+      "name": "superior-distance-15",
+      "frames": [
+        0
+      ],
+      "hash": "6F4ADFE89B904721F793FD212922F32B38900B520C95C0B157FAE41802BEBDB7"
+    },
+    {
+      "name": "superior-distance-80",
+      "frames": [
+        0
+      ],
+      "hash": "B004BBE8E32C1A858CAE1F9466397B492754C669CAE8E358F3A0B49A3D776424"
+    },
+    {
+      "name": "superior-eye-height-8",
+      "frames": [
+        0
+      ],
+      "hash": "F19A9B5440F562B380C24D920B0E3A79D5928762F2363DB543091BF264A512A5"
+    },
+    {
+      "name": "superior-inversion-difference-animated-frames",
+      "frames": [
+        0,
+        100,
+        200,
+        299
+      ],
+      "hash": "45389FDD596020889AD5B2B61C05CD987E99DF853E78010CD7B4F469AFF7B0B9"
+    }
+  ]
+}
