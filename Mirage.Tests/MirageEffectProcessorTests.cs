@@ -159,6 +159,26 @@ public sealed class MirageEffectProcessorTests
     }
 
     [Fact]
+    public void ThePhotoModeSmoothsTheHeightsTheStandardAtmosphereHidesAlongTheRow()
+    {
+        const int WideWidth = 800;
+        const int WideHeight = 96;
+        static Bgra Stripes(int x, int y) => Bgra.Opaque((byte)(x % 4 < 2 ? 0 : 240), (byte)(y * 2), 90);
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Superior();
+        using var source = new SourceImage(context, WideWidth, WideHeight, Stripes);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var rendering = RenderFrame(context, processor, 0);
+
+        AssertFollowsTheModel(rendering, new Model(effect, 0, Stripes, WideWidth, WideHeight), "wide photo");
+        var rows = Enumerable.Range(0, WideHeight).Where(y => Enumerable.Range(100, 400).Select(x => (int)rendering[x, y].Blue).Max() - Enumerable.Range(100, 400).Select(x => (int)rendering[x, y].Blue).Min() < 90 && rendering[100, y].Blue != source[100, y].Blue).ToArray();
+        Assert.NotEmpty(rows);
+    }
+
+    [Fact]
     public void TheGroundBelowTheCriticalAngleOfTheInferiorMirageIsLeftAlone()
     {
         using var devices = new GraphicsDevices();
