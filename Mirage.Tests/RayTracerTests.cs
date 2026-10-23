@@ -191,7 +191,7 @@ public sealed class RayTracerTests
 
         var result = RayTracer.Trace(atmosphere, 30.0, -0.0005 / Degrees, double.PositiveInfinity, 5.0);
 
-        Assert.Equal(RayEnd.Exited, result.End);
-        Assert.True(result.Distance >= 0.0);
+        Assert.Equal(RayEnd.Passed, result.End);
+        Assert.True(result.Distance >= MirageSettings.MaximumRayDistanceMeters);
     }
 }

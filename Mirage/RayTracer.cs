@@ -7,6 +7,7 @@ internal enum RayEnd
     Reached,
     Hit,
     Exited,
+    Passed,
 }
 
 internal readonly record struct RayResult(RayEnd End, double Height, double Distance, double Elevation);
@@ -61,12 +62,12 @@ internal static class RayTracer
                 return new RayResult(RayEnd.Reached, height, earth * next.Arc, next.Elevation);
 
             if (earth * next.Arc >= MirageSettings.MaximumRayDistanceMeters && double.IsPositiveInfinity(targetDistance))
-                return new RayResult(RayEnd.Exited, height, earth * next.Arc, next.Elevation);
+                return new RayResult(RayEnd.Passed, height, earth * next.Arc, next.Elevation);
 
             state = next;
         }
 
-        return new RayResult(RayEnd.Exited, state.Radius - earth, earth * state.Arc, state.Elevation);
+        return new RayResult(RayEnd.Passed, state.Radius - earth, earth * state.Arc, state.Elevation);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]

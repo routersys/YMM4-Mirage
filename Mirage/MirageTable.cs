@@ -39,7 +39,7 @@ internal static class MirageTable
         {
             var angle = MirageSettings.GetMapAngleRadians(index);
             var result = RayTracer.Trace(atmosphere, eyeHeight, angle, double.PositiveInfinity, ceiling);
-            shifts[index] = result.End == RayEnd.Hit ? 0f : (float)(result.Elevation - angle);
+            shifts[index] = result.End is RayEnd.Hit or RayEnd.Passed ? 0f : (float)(result.Elevation - angle);
         });
         return shifts;
     }
