@@ -42,7 +42,15 @@ internal static class RayTracer
                 return new RayResult(RayEnd.Hit, 0.0, earth * (state.Arc + fraction * (next.Arc - state.Arc)), state.Elevation + fraction * (next.Elevation - state.Elevation));
             }
 
-            if (height >= ceilingHeight)
+            if (state.Elevation < 0.0 && next.Elevation >= 0.0)
+            {
+                var fraction = -state.Elevation / (next.Elevation - state.Elevation);
+                var lowest = state.Radius - earth + 0.5 * state.Elevation * fraction * length;
+                if (lowest <= 0.0)
+                    return new RayResult(RayEnd.Hit, 0.0, earth * (state.Arc + fraction * (next.Arc - state.Arc)), 0.0);
+            }
+
+            if (state.Radius - earth < ceilingHeight && height >= ceilingHeight)
             {
                 var previous = state.Radius - earth;
                 var fraction = (ceilingHeight - previous) / (height - previous);
