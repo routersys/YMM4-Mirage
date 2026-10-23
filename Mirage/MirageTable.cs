@@ -83,7 +83,10 @@ internal static class MirageTable
     }
 
     public static double GeometricElevation(double coordinate, double eyeHeight, double distanceMeters)
-        => coordinate >= 0.0
-            ? Math.Atan((coordinate - eyeHeight) / distanceMeters)
-            : -Math.Atan(eyeHeight / (distanceMeters + coordinate));
+    {
+        var earth = MirageSettings.EarthRadiusMeters;
+        var height = Math.Max(coordinate, 0.0);
+        var arc = (coordinate >= 0.0 ? distanceMeters : distanceMeters + coordinate) / earth;
+        return Math.Atan2((earth + height) * Math.Cos(arc) - (earth + eyeHeight), (earth + height) * Math.Sin(arc));
+    }
 }

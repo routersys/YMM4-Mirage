@@ -218,21 +218,38 @@ public sealed class MirageTableTests
     {
         var photo = MirageTable.BuildSuperior(10.0, 12.0, 60.0, 10.0, Distance, MirageSource.Photo, Standard.Value);
         var scene = MirageTable.BuildSuperior(10.0, 12.0, 60.0, 10.0, Distance, MirageSource.Scene, Standard.Value);
+        var unchanged = MirageTable.BuildSuperior(10.0, 0.0, 60.0, 10.0, Distance, MirageSource.Scene, Standard.Value);
 
         Assert.False(photo.AsSpan().SequenceEqual(scene));
-        Assert.True(Seen(scene, 0.0) > Seen(scene, -0.1));
+        Assert.All(new[] { -0.3, 0.2, 0.4 }, degrees =>
+            Assert.Equal(MirageTable.GeometricElevation(Standard.Value[IndexOf(degrees)], 10.0, Distance) * Degrees, Seen(unchanged, degrees), 1e-4));
     }
 
     [Theory]
-    [InlineData(100.0, 10.0, 0.002249996)]
-    [InlineData(10.0, 10.0, 0.0)]
-    [InlineData(0.0, 10.0, -0.0002500)]
-    [InlineData(-10000.0, 10.0, -0.0003333)]
-    public void TheGeometricElevationIsTheStraightLineAngleToTheObject(double coordinate, double eyeHeight, double expected)
+    [InlineData(100.0, 10.0, -0.0008892552)]
+    [InlineData(10.0, 10.0, -0.0031392246)]
+    [InlineData(0.0, 10.0, -0.0033892236)]
+    [InlineData(-10000.0, 10.0, -0.0026877509)]
+    public void TheGeometricElevationIsTheStraightLineAngleToTheObjectOnTheSphericalEarth(double coordinate, double eyeHeight, double expected)
     {
         var value = MirageTable.GeometricElevation(coordinate, eyeHeight, 40000.0);
 
         Assert.Equal(expected, value, 1e-7);
+    }
+
+    [Theory]
+    [InlineData(2.0)]
+    [InlineData(10.0)]
+    [InlineData(300.0)]
+    public void TheGeometricElevationOfTheHorizonPointEqualsTheDipAngle(double eyeHeight)
+    {
+        var earth = MirageSettings.EarthRadiusMeters;
+        var dip = Math.Acos(earth / (earth + eyeHeight));
+        var coordinate = earth * dip - 100000.0;
+
+        var value = MirageTable.GeometricElevation(coordinate, eyeHeight, 100000.0);
+
+        Assert.Equal(-dip, value, 1e-12);
     }
 
     [Fact]
