@@ -1,4 +1,7 @@
+using System.Collections.Immutable;
 using System.Globalization;
+using System.Numerics;
+using System.Windows.Input;
 using YukkuriMovieMaker.Commons;
 using YukkuriMovieMaker.Json;
 using YukkuriMovieMaker.Player.Video;
@@ -91,8 +94,13 @@ public sealed class MirageEffectProcessorTests
     static int ChangedPixels(Rendering rendering, SourceImage source)
         => rendering.Coordinates().Count(point => rendering[point.X, point.Y] != source[point.X, point.Y]);
 
+    static double Focal(double fieldOfView = 3d) => MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(fieldOfView));
+
+    static ControllerPoint[] Line(IVideoEffectProcessor processor, int frame = 0)
+        => Assert.Single(processor.Update(EffectDescriptions.At(frame, Length)).Controllers).Points.ToArray();
+
     [Fact]
-    public void TheProcessorHandsTheDrawDescriptionBackUnchanged()
+    public void TheProcessorOnlyAddsTheControllerToTheDrawDescription()
     {
         using var devices = new GraphicsDevices();
         using var context = devices.CreateContext();
@@ -103,7 +111,242 @@ public sealed class MirageEffectProcessorTests
 
         var draw = processor.Update(description);
 
-        Assert.Same(description.DrawDescription, draw);
+        Assert.Equal(description.DrawDescription with { Controllers = draw.Controllers }, draw);
+        Assert.Single(draw.Controllers);
+    }
+
+    [Fact]
+    public void TheControllerIsALineAcrossTheImageAtTheHorizonAndBelongsToTheEffect()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.HorizonPosition.Values[0].Value = 40d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var draw = processor.Update(EffectDescriptions.At(0, Length));
+
+        var controller = Assert.IsType<VideoEffectController>(Assert.Single(draw.Controllers));
+        Assert.Same(effect, controller.Owner);
+        Assert.Equal(VideoControllerPointConnection.Line, controller.Connection);
+        var points = controller.Points.ToArray();
+        Assert.Equal(2, points.Length);
+        Assert.Equal(new Vector3(0f, Height / 2f + 40f, 0f), points[0].Position);
+        Assert.Equal(new Vector3(Width, Height / 2f + 40f, 0f), points[1].Position);
+    }
+
+    [Fact]
+    public void TheLineSitsWhereTheTiltAndThePositionPutTheHorizon()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.CameraPitch.Values[0].Value = 0.2d;
+        effect.HorizonPosition.Values[0].Value = 40d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var line = Line(processor);
+
+        var pitch = 0.2 * MirageSettings.RadiansPerDegree + Math.Atan(40d / Focal());
+        Assert.Equal(Height / 2f + (float)(Focal() * Math.Tan(pitch)), line[0].Position.Y, 1e-3f);
+        Assert.Equal(line[0].Position.Y, line[1].Position.Y);
+    }
+
+    [Fact]
+    public void DraggingTheLineMovesTheHorizonOnTheNextFrame()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var point = Line(processor)[0];
+
+        point.OnDrag!(new ControlPointDragEventArgs(new Vector3(7f, 9f, 0f), ModifierKeys.None));
+
+        Assert.Equal(9d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
+        var moved = Line(processor);
+        Assert.Equal(Height / 2f + 9f, moved[0].Position.Y, 1e-3f);
+        Assert.Equal(Height / 2f + 9f, moved[1].Position.Y, 1e-3f);
+        var rendering = Rendering.Capture(context, processor.Output);
+        AssertFollowsTheModel(rendering, new Model(effect, 0, Pattern), "after the drag");
+    }
+
+    [Fact]
+    public void DraggingEitherEndOfTheLineMovesTheSameHorizon()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var first = Line(processor);
+        first[0].OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, 5f, 0f), ModifierKeys.None));
+        var second = Line(processor);
+
+        second[1].OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, -12f, 0f), ModifierKeys.None));
+
+        Assert.Equal(-7d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
+    }
+
+    [Fact]
+    public void DraggingTheLineSidewaysLeavesTheHorizonAlone()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.HorizonPosition.Values[0].Value = 15d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var point = Line(processor)[1];
+
+        point.OnDrag!(new ControlPointDragEventArgs(new Vector3(30f, 0f, 0f), ModifierKeys.None));
+
+        Assert.Equal(15d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
+    }
+
+    [Fact]
+    public void ADragThatIsNotANumberLeavesTheHorizonAlone()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.HorizonPosition.Values[0].Value = 15d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var point = Line(processor)[0];
+
+        point.OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, float.NaN, 0f), ModifierKeys.None));
+
+        Assert.Equal(15d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
+    }
+
+    [Fact]
+    public void WithATiltTheLineStillFollowsTheDragExactly()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.CameraPitch.Values[0].Value = 0.3d;
+        effect.HorizonPosition.Values[0].Value = 25d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var before = Line(processor);
+
+        before[0].OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, 11f, 0f), ModifierKeys.None));
+
+        var after = Line(processor);
+        Assert.Equal(before[0].Position.Y + 11f, after[0].Position.Y, 1e-3f);
+        Assert.NotEqual(25d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-3);
+    }
+
+    [Fact]
+    public void DraggingAnAnimatedPositionAddsTheMovementToEveryValue()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.HorizonPosition.CopyFrom(Linear(-20d, 20d));
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var first = effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps);
+        var last = effect.HorizonPosition.GetValue(Length - 1, Length, EffectDescriptions.Fps);
+        var point = Line(processor)[0];
+
+        point.OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, 6f, 0f), ModifierKeys.None));
+
+        Assert.Equal(first + 6d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
+        Assert.Equal(last + 6d, effect.HorizonPosition.GetValue(Length - 1, Length, EffectDescriptions.Fps), 1e-9);
+    }
+
+    [Fact]
+    public void TheLineFollowsAnAnimatedPosition()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.HorizonPosition.CopyFrom(Linear(-30d, 30d));
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var first = Line(processor, 0)[0];
+        var last = Line(processor, Length - 1)[0];
+
+        Assert.Equal(Height / 2f - 30f, first.Position.Y, 1e-3f);
+        Assert.Equal(Height / 2f + (float)effect.HorizonPosition.GetValue(Length - 1, Length, EffectDescriptions.Fps), last.Position.Y, 1e-3f);
+        Assert.True(last.Position.Y > first.Position.Y + 50f);
+    }
+
+    [Fact]
+    public void TheLineStaysWithoutAnAmount()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = Inferior(0d).CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var draw = processor.Update(EffectDescriptions.At(0, Length));
+
+        Assert.Equal(2, Assert.Single(draw.Controllers).Points.Count());
+    }
+
+    [Fact]
+    public void TheControllersOfEarlierEffectsAreKeptInFront()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        var effect = Inferior();
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var earlier = new VideoEffectController(new MirageEffect(), [new ControllerPoint(Vector3.Zero)]);
+        var description = EffectDescriptions.At(0, Length);
+        description = description with { DrawDescription = description.DrawDescription with { Controllers = ImmutableList.Create<VideoEffectController>(earlier) } };
+
+        var draw = processor.Update(description);
+
+        Assert.Equal(2, draw.Controllers.Count);
+        Assert.Same(earlier, draw.Controllers[0]);
+        Assert.Same(effect, draw.Controllers[1].Owner);
+    }
+
+    [Fact]
+    public void WithoutAnInputNoControllerIsAdded()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var processor = Inferior().CreateVideoEffect(context);
+
+        var draw = processor.Update(EffectDescriptions.At(0, Length));
+
+        Assert.Empty(draw.Controllers);
+    }
+
+    [Fact]
+    public void ALargerImageGetsALineAcrossItsWholeWidth()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width * 2, Height * 2, Pattern);
+        using var processor = Inferior().CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var line = Line(processor);
+
+        Assert.Equal(new Vector3(0f, Height, 0f), line[0].Position);
+        Assert.Equal(new Vector3(Width * 2, Height, 0f), line[1].Position);
     }
 
     [Theory]

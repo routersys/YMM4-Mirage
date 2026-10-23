@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Vortice.Direct2D1;
 using Vortice.DCommon;
@@ -19,6 +21,8 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
     private StandardKey _standardKey;
     private MapKey _mapKey;
     private ConstantKey _constantKey;
+    private ImmutableList<VideoEffectController> _controllers = [];
+    private HorizonLine _line;
 
     public override DrawDescription Update(EffectDescription effectDescription)
     {
@@ -42,6 +46,11 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
         var length = effectDescription.ItemDuration.Frame;
         var fps = effectDescription.FPS;
         var amount = (float)(_item.Amount.GetValue(frame, length, fps) / 100.0);
+        var tilt = Math.Clamp(_item.CameraPitch.GetValue(frame, length, fps), MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees) * MirageSettings.RadiansPerDegree;
+        var position = Math.Clamp(_item.HorizonPosition.GetValue(frame, length, fps), -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
+        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps));
+        var line = GetLine(halfTangent, tilt, position);
+        var draw = WithController(effectDescription.DrawDescription, line);
         if (_isFirst || _constantKey.Amount != amount)
             _effect.Amount = amount;
 
@@ -49,7 +58,7 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
         {
             _constantKey = _constantKey with { Amount = amount };
             _isFirst = false;
-            return effectDescription.DrawDescription;
+            return draw;
         }
 
         var eyeHeight = Math.Clamp(_item.EyeHeight.GetValue(frame, length, fps), MirageSettings.MinimumEyeHeightMeters, MirageSettings.MaximumEyeHeightMeters);
@@ -62,10 +71,7 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
             _mapKey = mapKey;
         }
 
-        var tilt = Math.Clamp(_item.CameraPitch.GetValue(frame, length, fps), MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees) * MirageSettings.RadiansPerDegree;
-        var position = Math.Clamp(_item.HorizonPosition.GetValue(frame, length, fps), -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
-        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps));
-        var pitch = GetPitch(halfTangent, tilt, position);
+        var pitch = line?.Pitch ?? tilt;
         var shimmer = Math.Clamp(_item.Shimmer.GetValue(frame, length, fps), MirageSettings.MinimumShimmerPercent, MirageSettings.MaximumShimmerPercent) / 100.0;
         var amplitude = (float)(shimmer * MirageSettings.ShimmerAmplitudeRadians);
         var cycles = Math.Clamp(_item.ShimmerSpeed.GetValue(frame, length, fps), MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed) * frame / fps;
@@ -89,17 +95,44 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
 
         _constantKey = constantKey;
         _isFirst = false;
-        return effectDescription.DrawDescription;
+        return draw;
     }
 
-    private double GetPitch(float halfTangent, double tilt, double position)
+    private HorizonLine? GetLine(float halfTangent, double tilt, double position)
     {
         if (input is null)
-            return tilt;
+            return null;
 
         var bounds = _devices.DeviceContext.GetImageLocalBounds(input);
         var focal = MirageHorizon.FocalLength(bounds.Right - bounds.Left, halfTangent);
-        return focal > 0.0 && double.IsFinite(focal) ? MirageHorizon.Pitch(tilt, position, focal) : tilt;
+        if (!(focal > 0.0) || !double.IsFinite(focal))
+            return null;
+
+        return new HorizonLine(bounds.Left, bounds.Right, 0.5f * (bounds.Top + bounds.Bottom), focal, tilt, position);
+    }
+
+    private DrawDescription WithController(DrawDescription draw, HorizonLine? line)
+    {
+        if (line is not { } horizon || !float.IsFinite(horizon.Y))
+            return draw;
+
+        if (_line != horizon)
+        {
+            var left = new ControllerPoint(new Vector3(horizon.Left, horizon.Y, 0f), OnDrag);
+            var right = new ControllerPoint(new Vector3(horizon.Right, horizon.Y, 0f), OnDrag);
+            _controllers = [new VideoEffectController(_item, [left, right]) { Connection = VideoControllerPointConnection.Line }];
+            _line = horizon;
+        }
+
+        return draw with { Controllers = draw.Controllers.AddRange(_controllers) };
+    }
+
+    private void OnDrag(ControlPointDragEventArgs argument)
+    {
+        var row = MirageHorizon.Row(_line.Pitch, _line.Focal) + argument.Delta.Y;
+        var change = MirageHorizon.Position(row, _line.Tilt, _line.Focal) - _line.Position;
+        if (double.IsFinite(change))
+            _item.HorizonPosition.AddToEachValues(change);
     }
 
     private static float GetPhase(float amplitude, int component, double cycles)
@@ -186,6 +219,13 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
             MirageTelemetry.Report(exception);
             throw;
         }
+    }
+
+    private readonly record struct HorizonLine(float Left, float Right, float CenterY, double Focal, double Tilt, double Position)
+    {
+        public double Pitch => MirageHorizon.Pitch(Tilt, Position, Focal);
+
+        public float Y => CenterY + (float)MirageHorizon.Row(Pitch, Focal);
     }
 
     private readonly record struct StandardKey(double EyeHeight, double Distance);
