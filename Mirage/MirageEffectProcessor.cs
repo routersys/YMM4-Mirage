@@ -10,6 +10,7 @@ namespace Mirage;
 
 internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, MirageEffect item) : VideoEffectProcessorBase(devices)
 {
+    private readonly IGraphicsDevicesAndContext _devices = devices;
     private readonly MirageEffect _item = item;
     private MirageCustomEffect? _effect;
     private ID2D1Bitmap1? _map;
@@ -61,11 +62,14 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
             _mapKey = mapKey;
         }
 
-        var pitch = Math.Clamp(_item.CameraPitch.GetValue(frame, length, fps), MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees) * MirageSettings.RadiansPerDegree;
+        var tilt = Math.Clamp(_item.CameraPitch.GetValue(frame, length, fps), MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees) * MirageSettings.RadiansPerDegree;
+        var position = Math.Clamp(_item.HorizonPosition.GetValue(frame, length, fps), -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
+        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps));
+        var pitch = GetPitch(halfTangent, tilt, position);
         var shimmer = Math.Clamp(_item.Shimmer.GetValue(frame, length, fps), MirageSettings.MinimumShimmerPercent, MirageSettings.MaximumShimmerPercent) / 100.0;
         var amplitude = (float)(shimmer * MirageSettings.ShimmerAmplitudeRadians);
         var cycles = Math.Clamp(_item.ShimmerSpeed.GetValue(frame, length, fps), MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed) * frame / fps;
-        var constantKey = new ConstantKey(amount, MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), amplitude, GetPhase(amplitude, 0, cycles), GetPhase(amplitude, 1, cycles), GetPhase(amplitude, 2, cycles), GetPhase(amplitude, 3, cycles));
+        var constantKey = new ConstantKey(amount, halfTangent, (float)Math.Cos(pitch), (float)Math.Sin(pitch), amplitude, GetPhase(amplitude, 0, cycles), GetPhase(amplitude, 1, cycles), GetPhase(amplitude, 2, cycles), GetPhase(amplitude, 3, cycles));
         if (_isFirst || _constantKey.HalfFieldTangent != constantKey.HalfFieldTangent)
             _effect.HalfFieldTangent = constantKey.HalfFieldTangent;
         if (_isFirst || _constantKey.PitchCosine != constantKey.PitchCosine)
@@ -86,6 +90,16 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
         _constantKey = constantKey;
         _isFirst = false;
         return effectDescription.DrawDescription;
+    }
+
+    private double GetPitch(float halfTangent, double tilt, double position)
+    {
+        if (input is null)
+            return tilt;
+
+        var bounds = _devices.DeviceContext.GetImageLocalBounds(input);
+        var focal = MirageHorizon.FocalLength(bounds.Right - bounds.Left, halfTangent);
+        return focal > 0.0 && double.IsFinite(focal) ? MirageHorizon.Pitch(tilt, position, focal) : tilt;
     }
 
     private static float GetPhase(float amplitude, int component, double cycles)

@@ -66,11 +66,12 @@ public sealed class MirageEffectProcessorTests
                 fill = unseen;
             }
 
-            var pitch = Value(effect.CameraPitch) * MirageSettings.RadiansPerDegree;
+            var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView));
+            var pitch = MirageHorizon.Pitch(Value(effect.CameraPitch) * MirageSettings.RadiansPerDegree, Value(effect.HorizonPosition), MirageHorizon.FocalLength(width, halfTangent));
             var amplitude = (float)(Math.Clamp(Value(effect.Shimmer), 0d, 100d) / 100.0 * MirageSettings.ShimmerAmplitudeRadians);
             var cycles = Value(effect.ShimmerSpeed) * frame / EffectDescriptions.Fps;
             var phases = Enumerable.Range(0, 4).Select(component => amplitude > 0f ? MirageSettings.GetShimmerPhase(component, cycles) : 0f).ToArray();
-            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts, fill), MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0), amplitude, phases);
+            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts, fill), halfTangent, (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0), amplitude, phases);
         }
 
         public Bgra Expected(int x, int y) => shader.Shade(x, y);
@@ -261,6 +262,8 @@ public sealed class MirageEffectProcessorTests
         { nameof(MirageEffect.HeatThickness), MirageKind.Inferior, effect => effect.HeatThickness.Values[0].Value = 1.5d },
         { nameof(MirageEffect.FieldOfView), MirageKind.Inferior, effect => effect.FieldOfView.Values[0].Value = 1.5d },
         { nameof(MirageEffect.CameraPitch), MirageKind.Inferior, effect => effect.CameraPitch.Values[0].Value = 0.2d },
+        { nameof(MirageEffect.HorizonPosition), MirageKind.Inferior, effect => effect.HorizonPosition.Values[0].Value = 30d },
+        { nameof(MirageEffect.HorizonPosition), MirageKind.Superior, effect => effect.HorizonPosition.Values[0].Value = -20d },
         { nameof(MirageEffect.Shimmer), MirageKind.Inferior, effect => effect.Shimmer.Values[0].Value = 60d },
         { nameof(MirageEffect.Shimmer), MirageKind.Superior, effect => effect.Shimmer.Values[0].Value = 100d },
         { nameof(MirageEffect.Kind), MirageKind.Inferior, effect => effect.Kind = MirageKind.Superior },
@@ -290,6 +293,55 @@ public sealed class MirageEffectProcessorTests
 
         Assert.False(before.SamePixelsAs(after), setting);
         AssertFollowsTheModel(after, new Model(effect, 3, Pattern), $"{setting} {kind}");
+    }
+
+    [Fact]
+    public void AHorizonPositionMovesTheMirageLikeTheMatchingTilt()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var positioned = Inferior();
+        positioned.HorizonPosition.Values[0].Value = 30d;
+        var focal = MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(3d));
+        var tilted = Inferior();
+        tilted.CameraPitch.Values[0].Value = Math.Atan(30d / focal) / MirageSettings.RadiansPerDegree;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var positionedProcessor = positioned.CreateVideoEffect(context);
+        using var tiltedProcessor = tilted.CreateVideoEffect(context);
+        positionedProcessor.SetInput(source.Bitmap);
+        tiltedProcessor.SetInput(source.Bitmap);
+
+        var first = RenderFrame(context, positionedProcessor, 0);
+        var second = RenderFrame(context, tiltedProcessor, 0);
+
+        Assert.True(first.SamePixelsAs(second));
+        Assert.True(ChangedPixels(first, source) > Width * 20);
+    }
+
+    [Fact]
+    public void AHorizonPositionAddsToTheTiltInAWideView()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var positioned = Inferior();
+        positioned.FieldOfView.Values[0].Value = 60d;
+        positioned.CameraPitch.Values[0].Value = 3d;
+        positioned.HorizonPosition.Values[0].Value = 30d;
+        var focal = MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(60d));
+        var tilted = Inferior();
+        tilted.FieldOfView.Values[0].Value = 60d;
+        tilted.CameraPitch.Values[0].Value = (3d * MirageSettings.RadiansPerDegree + Math.Atan(30d / focal)) / MirageSettings.RadiansPerDegree;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var positionedProcessor = positioned.CreateVideoEffect(context);
+        using var tiltedProcessor = tilted.CreateVideoEffect(context);
+        positionedProcessor.SetInput(source.Bitmap);
+        tiltedProcessor.SetInput(source.Bitmap);
+
+        var first = RenderFrame(context, positionedProcessor, 0);
+        var second = RenderFrame(context, tiltedProcessor, 0);
+
+        Assert.True(first.SamePixelsAs(second));
+        Assert.True(ChangedPixels(first, source) > 0);
     }
 
     [Fact]

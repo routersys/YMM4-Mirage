@@ -82,7 +82,11 @@ public sealed class MirageEffect : VideoEffectBase
     [AnimationSlider("F2", "°", MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees)]
     public Animation FieldOfView { get; } = new Animation(3, MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees);
 
-    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.CameraPitch), Description = nameof(Texts.CameraPitchDescription), Order = 21, ResourceType = typeof(Texts))]
+    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.HorizonPosition), Description = nameof(Texts.HorizonPositionDescription), Order = 21, ResourceType = typeof(Texts))]
+    [AnimationSlider("F1", "px", -MirageSettings.HorizonPositionSliderPixels, MirageSettings.HorizonPositionSliderPixels)]
+    public Animation HorizonPosition { get; } = new Animation(0, -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
+
+    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.CameraPitch), Description = nameof(Texts.CameraPitchDescription), Order = 22, ResourceType = typeof(Texts))]
     [AnimationSlider("F2", "°", MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees)]
     public Animation CameraPitch { get; } = new Animation(0, MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees);
 
@@ -104,5 +108,5 @@ public sealed class MirageEffect : VideoEffectBase
     }
 
     protected override IEnumerable<IAnimatable> GetAnimatables()
-        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, CameraPitch, Shimmer, ShimmerSpeed];
+        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, CameraPitch, HorizonPosition, Shimmer, ShimmerSpeed];
 }
