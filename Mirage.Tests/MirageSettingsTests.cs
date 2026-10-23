@@ -27,8 +27,8 @@ public sealed class MirageSettingsTests
     [InlineData(1, 0.0, 0.57)]
     [InlineData(2, 0.0, 0.81)]
     [InlineData(3, 0.0, 0.35)]
-    [InlineData(0, 0.25, 0.13 - 1.1 * 0.25 + 1.0)]
-    [InlineData(2, 2.0, 0.81 - 2.9 * 2.0 + 6.0)]
+    [InlineData(0, 0.25, 0.13 - 1.137 * 0.25 + 1.0)]
+    [InlineData(2, 2.0, 0.81 - 2.923 * 2.0 + 6.0)]
     public void TheShimmerPhaseTurnsBackwardsWithTheCyclesAndWrapsInOneTurn(int component, double cycles, double expectedTurns)
     {
         var expected = (expectedTurns - Math.Floor(expectedTurns)) * 2.0 * Math.PI;

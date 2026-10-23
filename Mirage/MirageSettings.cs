@@ -59,7 +59,7 @@ internal static class MirageSettings
     public static readonly float[] ShimmerAzimuthFrequencies = [400f, 170f, 650f, 95f];
     public static readonly float[] ShimmerElevationFrequencies = [2570f, 1330f, 4000f, 720f];
     public static readonly float[] ShimmerWeights = [1f, 0.7f, 0.5f, 0.35f];
-    public static readonly double[] ShimmerCyclesPerSecond = [1.1, 1.7, 2.9, 0.6];
+    public static readonly double[] ShimmerCyclesPerSecond = [1.137, 1.711, 2.923, 0.619];
     public static readonly double[] ShimmerOffsetCycles = [0.13, 0.57, 0.81, 0.35];
 
     public static readonly float MinimumHalfFieldTangent = GetHalfFieldOfViewTangent(MinimumFieldOfViewDegrees);
