@@ -109,6 +109,30 @@
       "hash": "30B445AC2701CEE1E9424237B794538BECF6801D830E94AAFD509F7177DD944F"
     },
     {
+      "name": "horizon-position-minus-120",
+      "frames": [
+        0
+      ],
+      "hash": "CB3B2E097141CDD5BB53091C4F77EB3AD80F670C349EFF750F2B8E9DDF3CEC0F"
+    },
+    {
+      "name": "horizon-position-120",
+      "frames": [
+        0
+      ],
+      "hash": "1A1AA6D9411552FBF8162745E93F73ED65B963B66F0D90F682EBF168C7FA07B0"
+    },
+    {
+      "name": "horizon-position-animated-frames",
+      "frames": [
+        0,
+        100,
+        200,
+        299
+      ],
+      "hash": "84ADBB495157F5013F106E6355A019CD319D9A2735CC95B0DB276695E367D1FA"
+    },
+    {
       "name": "shimmer-60",
       "frames": [
         0
