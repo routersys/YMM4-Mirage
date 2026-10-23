@@ -18,7 +18,7 @@ public sealed class MirageEffectTests
     static T Attribute<T>(string property) where T : Attribute => Property(property).GetCustomAttribute<T>()!;
 
     static Animation[] Animations(MirageEffect effect)
-        => [effect.Amount, effect.EyeHeight, effect.HeatDifference, effect.HeatThickness, effect.InversionDifference, effect.InversionHeight, effect.InversionThickness, effect.Distance, effect.FieldOfView, effect.CameraPitch];
+        => [effect.Amount, effect.EyeHeight, effect.HeatDifference, effect.HeatThickness, effect.InversionDifference, effect.InversionHeight, effect.InversionThickness, effect.Distance, effect.FieldOfView, effect.CameraPitch, effect.Shimmer, effect.ShimmerSpeed];
 
     [Theory]
     [InlineData(nameof(MirageEffect.Amount), 100d, 0d, 100d)]
@@ -31,6 +31,8 @@ public sealed class MirageEffectTests
     [InlineData(nameof(MirageEffect.Distance), 40d, 5d, 100d)]
     [InlineData(nameof(MirageEffect.FieldOfView), 3d, 0.2d, 60d)]
     [InlineData(nameof(MirageEffect.CameraPitch), 0d, -20d, 20d)]
+    [InlineData(nameof(MirageEffect.Shimmer), 0d, 0d, 100d)]
+    [InlineData(nameof(MirageEffect.ShimmerSpeed), 1d, 0d, 5d)]
     public void AnimatedParametersStartFromTheirDefaultsWithinTheirRange(string name, double defaultValue, double minimum, double maximum)
     {
         var effect = new MirageEffect();
@@ -66,6 +68,11 @@ public sealed class MirageEffectTests
         Assert.Equal(MirageSettings.MaximumFieldOfViewDegrees, effect.FieldOfView.MaxValue);
         Assert.Equal(MirageSettings.MinimumCameraPitchDegrees, effect.CameraPitch.MinValue);
         Assert.Equal(MirageSettings.MaximumCameraPitchDegrees, effect.CameraPitch.MaxValue);
+        Assert.Equal(MirageSettings.MinimumShimmerPercent, effect.Shimmer.MinValue);
+        Assert.Equal(MirageSettings.MaximumShimmerPercent, effect.Shimmer.MaxValue);
+        Assert.Equal(MirageSettings.MinimumShimmerSpeed, effect.ShimmerSpeed.MinValue);
+        Assert.Equal(MirageSettings.MaximumShimmerSpeed, effect.ShimmerSpeed.MaxValue);
+        Assert.Equal(MirageSettings.DefaultShimmerSpeed, effect.ShimmerSpeed.DefaultValue);
     }
 
     [Fact]
@@ -103,7 +110,7 @@ public sealed class MirageEffectTests
 
         effect.SetAnimationParameters(120, EffectDescriptions.Fps);
 
-        Assert.Equal(10, Animations(effect).Length);
+        Assert.Equal(12, Animations(effect).Length);
         Assert.All(Animations(effect), animation => Assert.Equal(120, animation.Length));
     }
 
@@ -153,6 +160,8 @@ public sealed class MirageEffectTests
     [InlineData(nameof(MirageEffect.InversionThickness), nameof(Texts.AtmosphereGroup), nameof(Texts.InversionThickness), nameof(Texts.InversionThicknessDescription), 16)]
     [InlineData(nameof(MirageEffect.Distance), nameof(Texts.AtmosphereGroup), nameof(Texts.Distance), nameof(Texts.DistanceDescription), 17)]
     [InlineData(nameof(MirageEffect.Source), nameof(Texts.AtmosphereGroup), nameof(Texts.Source), nameof(Texts.SourceDescription), 18)]
+    [InlineData(nameof(MirageEffect.Shimmer), nameof(Texts.AtmosphereGroup), nameof(Texts.Shimmer), nameof(Texts.ShimmerDescription), 19)]
+    [InlineData(nameof(MirageEffect.ShimmerSpeed), nameof(Texts.AtmosphereGroup), nameof(Texts.ShimmerSpeed), nameof(Texts.ShimmerSpeedDescription), 20)]
     [InlineData(nameof(MirageEffect.FieldOfView), nameof(Texts.CameraGroup), nameof(Texts.FieldOfView), nameof(Texts.FieldOfViewDescription), 20)]
     [InlineData(nameof(MirageEffect.CameraPitch), nameof(Texts.CameraGroup), nameof(Texts.CameraPitch), nameof(Texts.CameraPitchDescription), 21)]
     public void EveryParameterIsDisplayedInItsGroupInOrder(string property, string group, string name, string description, int order)
@@ -177,6 +186,8 @@ public sealed class MirageEffectTests
     [InlineData(nameof(MirageEffect.Distance), "F1", "km", 5d, 100d)]
     [InlineData(nameof(MirageEffect.FieldOfView), "F2", "°", 0.2d, 60d)]
     [InlineData(nameof(MirageEffect.CameraPitch), "F2", "°", -20d, 20d)]
+    [InlineData(nameof(MirageEffect.Shimmer), "F1", "%", 0d, 100d)]
+    [InlineData(nameof(MirageEffect.ShimmerSpeed), "F2", "×", 0d, 5d)]
     public void AnimatedParametersAreEditedWithAnimationSliders(string property, string format, string unit, double minimum, double maximum)
     {
         var slider = Attribute<AnimationSliderAttribute>(property);
@@ -209,6 +220,8 @@ public sealed class MirageEffectTests
     [InlineData(nameof(MirageEffect.EyeHeight))]
     [InlineData(nameof(MirageEffect.FieldOfView))]
     [InlineData(nameof(MirageEffect.CameraPitch))]
+    [InlineData(nameof(MirageEffect.Shimmer))]
+    [InlineData(nameof(MirageEffect.ShimmerSpeed))]
     public void TheCommonParametersAreAlwaysShown(string property)
     {
         Assert.Null(Property(property).GetCustomAttribute<ShowPropertyEditorWhenAttribute>());
@@ -218,7 +231,7 @@ public sealed class MirageEffectTests
     public void EverySettingSurvivesAProjectRoundTrip()
     {
         var effect = new MirageEffect { Kind = MirageKind.Superior, Source = MirageSource.Scene };
-        var values = new[] { 55d, 7d, 31d, 1.25d, 9d, 120d, 14d, 63d, 2.5d, -3.5d };
+        var values = new[] { 55d, 7d, 31d, 1.25d, 9d, 120d, 14d, 63d, 2.5d, -3.5d, 45d, 2.5d };
         foreach (var (animation, value) in Animations(effect).Zip(values))
             animation.Values[0].Value = value;
 

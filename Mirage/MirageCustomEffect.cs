@@ -16,14 +16,26 @@ internal sealed class MirageCustomEffect(IGraphicsDevicesAndContext devices)
         HalfFieldTangent,
         PitchCosine,
         PitchSine,
+        ShimmerAmplitude,
+        ShimmerPhase0,
+        ShimmerPhase1,
+        ShimmerPhase2,
+        ShimmerPhase3,
     }
 
     public float Amount { set => SetValue((int)PropertyIndex.Amount, value); }
     public float HalfFieldTangent { set => SetValue((int)PropertyIndex.HalfFieldTangent, value); }
     public float PitchCosine { set => SetValue((int)PropertyIndex.PitchCosine, value); }
     public float PitchSine { set => SetValue((int)PropertyIndex.PitchSine, value); }
+    public float ShimmerAmplitude { set => SetValue((int)PropertyIndex.ShimmerAmplitude, value); }
+    public float ShimmerPhase0 { set => SetValue((int)PropertyIndex.ShimmerPhase0, value); }
+    public float ShimmerPhase1 { set => SetValue((int)PropertyIndex.ShimmerPhase1, value); }
+    public float ShimmerPhase2 { set => SetValue((int)PropertyIndex.ShimmerPhase2, value); }
+    public float ShimmerPhase3 { set => SetValue((int)PropertyIndex.ShimmerPhase3, value); }
 
     private const float DefaultHalfFieldTangent = 1f;
+    private const float MaximumShimmerAmplitude = 0.01f;
+    private const float MaximumShimmerPhase = 1e4f;
 
     [CustomEffect(2)]
     internal sealed class EffectImpl : D2D1CustomShaderEffectImplBase<EffectImpl>
@@ -42,6 +54,21 @@ internal sealed class MirageCustomEffect(IGraphicsDevicesAndContext devices)
 
         [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.PitchSine)]
         public float PitchSine { get => _cb.PitchSine; set { _cb.PitchSine = Sanitize(value, -1f, 1f); UpdateConstants(); } }
+
+        [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.ShimmerAmplitude)]
+        public float ShimmerAmplitude { get => _cb.ShimmerAmplitude; set { _cb.ShimmerAmplitude = Sanitize(value, 0f, MaximumShimmerAmplitude); UpdateConstants(); } }
+
+        [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.ShimmerPhase0)]
+        public float ShimmerPhase0 { get => _cb.ShimmerPhase.X; set { _cb.ShimmerPhase.X = Sanitize(value, -MaximumShimmerPhase, MaximumShimmerPhase); UpdateConstants(); } }
+
+        [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.ShimmerPhase1)]
+        public float ShimmerPhase1 { get => _cb.ShimmerPhase.Y; set { _cb.ShimmerPhase.Y = Sanitize(value, -MaximumShimmerPhase, MaximumShimmerPhase); UpdateConstants(); } }
+
+        [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.ShimmerPhase2)]
+        public float ShimmerPhase2 { get => _cb.ShimmerPhase.Z; set { _cb.ShimmerPhase.Z = Sanitize(value, -MaximumShimmerPhase, MaximumShimmerPhase); UpdateConstants(); } }
+
+        [CustomEffectProperty(PropertyType.Float, (int)PropertyIndex.ShimmerPhase3)]
+        public float ShimmerPhase3 { get => _cb.ShimmerPhase.W; set { _cb.ShimmerPhase.W = Sanitize(value, -MaximumShimmerPhase, MaximumShimmerPhase); UpdateConstants(); } }
 
         public EffectImpl() : base(ShaderResourceUri.Get("Mirage"))
         {
@@ -109,6 +136,11 @@ internal sealed class MirageCustomEffect(IGraphicsDevicesAndContext devices)
             public float MapSpan;
             public float MapWidth;
             public float Padding;
+            public Vector4 ShimmerPhase;
+            public float ShimmerAmplitude;
+            public float Padding0;
+            public float Padding1;
+            public float Padding2;
         }
     }
 }

@@ -13,6 +13,8 @@ cbuffer Constants : register(b0)
     float mapStart : packoffset(c2.x);
     float mapSpan : packoffset(c2.y);
     float mapWidth : packoffset(c2.z);
+    float4 shimmerPhase : packoffset(c3);
+    float shimmerAmplitude : packoffset(c4.x);
 };
 
 static const float HalfTexel = 0.5;
@@ -23,6 +25,10 @@ static const float FillRadiusFraction = 0.006;
 static const int FillHalfTaps = 4;
 static const float FillTaps = 9.0;
 static const float FillThreshold = 0.5;
+static const float4 ShimmerAzimuthFrequency = float4(400.0, 170.0, 650.0, 95.0);
+static const float4 ShimmerElevationFrequency = float4(2570.0, 1330.0, 4000.0, 720.0);
+static const float4 ShimmerWeight = float4(1.0, 0.7, 0.5, 0.35);
+static const float ShimmerWeightSum = 2.55;
 static const float MaximumSine = 0.1;
 
 float ArcSine(float value)
@@ -51,6 +57,12 @@ float ReadFill(float elevation)
     return MapTexture.SampleLevel(MapSampler, mapUv, 0).y;
 }
 
+float Wobble(float elevation, float azimuth)
+{
+    float4 phase = shimmerPhase + ShimmerAzimuthFrequency * azimuth + ShimmerElevationFrequency * elevation;
+    return shimmerAmplitude * dot(sin(phase), ShimmerWeight) / ShimmerWeightSum;
+}
+
 float4 main(
     float4 position : SV_POSITION,
     float4 scenePosition : SCENE_POSITION,
@@ -77,9 +89,13 @@ float4 main(
     float pixelAngle = 1.0 / focalLength;
     float fillStep = FillRadiusFraction * (inputBounds.z - inputBounds.x) / FillHalfTaps;
 
-    float lowShift = ReadShift(elevation - 0.5 * pixelAngle);
-    float highShift = ReadShift(elevation + 0.5 * pixelAngle);
-    if (abs(lowShift) <= MinimumShift && abs(highShift) <= MinimumShift && abs(ReadShift(elevation)) <= MinimumShift)
+    float shake = 0.0;
+    if (shimmerAmplitude > 0.0)
+        shake = Wobble(elevation, sinAzimuth);
+
+    float lowShift = ReadShift(elevation - 0.5 * pixelAngle + shake);
+    float highShift = ReadShift(elevation + 0.5 * pixelAngle + shake);
+    if (abs(lowShift) <= MinimumShift && abs(highShift) <= MinimumShift && abs(ReadShift(elevation + shake)) <= MinimumShift)
         return source;
 
     float stretch = abs(pixelAngle + highShift - lowShift) / pixelAngle;
@@ -92,7 +108,8 @@ float4 main(
             break;
 
         float sampled = elevation + ((tap + 0.5) / taps - 0.5) * pixelAngle;
-        float seen = sampled + ReadShift(sampled);
+        float lookup = sampled + shake;
+        float seen = sampled + ReadShift(lookup);
         float sinSeen;
         float cosSeen;
         sincos(seen, sinSeen, cosSeen);
@@ -102,7 +119,7 @@ float4 main(
         float2 seenPosition = center + focalLength * seenDirection.xy / max(seenDirection.z, MinimumDepth);
         float2 lowerBound = inputBounds.xy + HalfTexel;
         float2 upperBound = inputBounds.zw - HalfTexel;
-        if (ReadFill(sampled) > FillThreshold)
+        if (ReadFill(lookup) > FillThreshold)
         {
             float4 blurred = float4(0.0, 0.0, 0.0, 0.0);
             [unroll]

@@ -62,18 +62,34 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
         }
 
         var pitch = Math.Clamp(_item.CameraPitch.GetValue(frame, length, fps), MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees) * MirageSettings.RadiansPerDegree;
-        var constantKey = new ConstantKey(amount, MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps)), (float)Math.Cos(pitch), (float)Math.Sin(pitch));
+        var shimmer = Math.Clamp(_item.Shimmer.GetValue(frame, length, fps), MirageSettings.MinimumShimmerPercent, MirageSettings.MaximumShimmerPercent) / 100.0;
+        var amplitude = (float)(shimmer * MirageSettings.ShimmerAmplitudeRadians);
+        var cycles = Math.Clamp(_item.ShimmerSpeed.GetValue(frame, length, fps), MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed) * frame / fps;
+        var constantKey = new ConstantKey(amount, MirageSettings.GetHalfFieldOfViewTangent(_item.FieldOfView.GetValue(frame, length, fps)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), amplitude, GetPhase(amplitude, 0, cycles), GetPhase(amplitude, 1, cycles), GetPhase(amplitude, 2, cycles), GetPhase(amplitude, 3, cycles));
         if (_isFirst || _constantKey.HalfFieldTangent != constantKey.HalfFieldTangent)
             _effect.HalfFieldTangent = constantKey.HalfFieldTangent;
         if (_isFirst || _constantKey.PitchCosine != constantKey.PitchCosine)
             _effect.PitchCosine = constantKey.PitchCosine;
         if (_isFirst || _constantKey.PitchSine != constantKey.PitchSine)
             _effect.PitchSine = constantKey.PitchSine;
+        if (_isFirst || _constantKey.ShimmerAmplitude != constantKey.ShimmerAmplitude)
+            _effect.ShimmerAmplitude = constantKey.ShimmerAmplitude;
+        if (_isFirst || _constantKey.ShimmerPhase0 != constantKey.ShimmerPhase0)
+            _effect.ShimmerPhase0 = constantKey.ShimmerPhase0;
+        if (_isFirst || _constantKey.ShimmerPhase1 != constantKey.ShimmerPhase1)
+            _effect.ShimmerPhase1 = constantKey.ShimmerPhase1;
+        if (_isFirst || _constantKey.ShimmerPhase2 != constantKey.ShimmerPhase2)
+            _effect.ShimmerPhase2 = constantKey.ShimmerPhase2;
+        if (_isFirst || _constantKey.ShimmerPhase3 != constantKey.ShimmerPhase3)
+            _effect.ShimmerPhase3 = constantKey.ShimmerPhase3;
 
         _constantKey = constantKey;
         _isFirst = false;
         return effectDescription.DrawDescription;
     }
+
+    private static float GetPhase(float amplitude, int component, double cycles)
+        => amplitude > 0f ? MirageSettings.GetShimmerPhase(component, cycles) : 0f;
 
     private float[] Build(MapKey key)
     {
@@ -162,5 +178,5 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
 
     private readonly record struct MapKey(MirageKind Kind, double EyeHeight, double HeatDifference, double HeatThickness, double InversionDifference, double InversionHeight, double InversionThickness, double Distance, MirageSource Source);
 
-    private readonly record struct ConstantKey(float Amount, float HalfFieldTangent, float PitchCosine, float PitchSine);
+    private readonly record struct ConstantKey(float Amount, float HalfFieldTangent, float PitchCosine, float PitchSine, float ShimmerAmplitude, float ShimmerPhase0, float ShimmerPhase1, float ShimmerPhase2, float ShimmerPhase3);
 }

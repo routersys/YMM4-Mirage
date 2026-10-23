@@ -70,6 +70,14 @@ public sealed class MirageEffect : VideoEffectBase
     public MirageSource Source { get => _source; set => Set(ref _source, value); }
     private MirageSource _source = MirageSource.Photo;
 
+    [Display(GroupName = nameof(Texts.AtmosphereGroup), Name = nameof(Texts.Shimmer), Description = nameof(Texts.ShimmerDescription), Order = 19, ResourceType = typeof(Texts))]
+    [AnimationSlider("F1", "%", MirageSettings.MinimumShimmerPercent, MirageSettings.MaximumShimmerPercent)]
+    public Animation Shimmer { get; } = new Animation(0, MirageSettings.MinimumShimmerPercent, MirageSettings.MaximumShimmerPercent);
+
+    [Display(GroupName = nameof(Texts.AtmosphereGroup), Name = nameof(Texts.ShimmerSpeed), Description = nameof(Texts.ShimmerSpeedDescription), Order = 20, ResourceType = typeof(Texts))]
+    [AnimationSlider("F2", "×", MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed)]
+    public Animation ShimmerSpeed { get; } = new Animation(MirageSettings.DefaultShimmerSpeed, MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed);
+
     [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.FieldOfView), Description = nameof(Texts.FieldOfViewDescription), Order = 20, ResourceType = typeof(Texts))]
     [AnimationSlider("F2", "°", MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees)]
     public Animation FieldOfView { get; } = new Animation(3, MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees);
@@ -96,5 +104,5 @@ public sealed class MirageEffect : VideoEffectBase
     }
 
     protected override IEnumerable<IAnimatable> GetAnimatables()
-        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, CameraPitch];
+        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, CameraPitch, Shimmer, ShimmerSpeed];
 }

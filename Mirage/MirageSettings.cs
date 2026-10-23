@@ -35,6 +35,11 @@ internal static class MirageSettings
     public const double MaximumFieldOfViewDegrees = 60.0;
     public const double MinimumCameraPitchDegrees = -20.0;
     public const double MaximumCameraPitchDegrees = 20.0;
+    public const double MinimumShimmerPercent = 0.0;
+    public const double MaximumShimmerPercent = 100.0;
+    public const double MinimumShimmerSpeed = 0.0;
+    public const double MaximumShimmerSpeed = 5.0;
+    public const double DefaultShimmerSpeed = 1.0;
 
     public const double MetersPerKilometer = 1000.0;
     public const double StandardLayerScaleMeters = 100.0;
@@ -48,6 +53,14 @@ internal static class MirageSettings
     public const int MaximumTaps = 16;
     public const double FillRadiusFraction = 0.006;
     public const int FillTaps = 9;
+    public const double ShimmerAmplitudeDegrees = 0.02;
+    public const double ShimmerAmplitudeRadians = ShimmerAmplitudeDegrees * RadiansPerDegree;
+
+    public static readonly float[] ShimmerAzimuthFrequencies = [400f, 170f, 650f, 95f];
+    public static readonly float[] ShimmerElevationFrequencies = [2570f, 1330f, 4000f, 720f];
+    public static readonly float[] ShimmerWeights = [1f, 0.7f, 0.5f, 0.35f];
+    public static readonly double[] ShimmerCyclesPerSecond = [1.1, 1.7, 2.9, 0.6];
+    public static readonly double[] ShimmerOffsetCycles = [0.13, 0.57, 0.81, 0.35];
 
     public static readonly float MinimumHalfFieldTangent = GetHalfFieldOfViewTangent(MinimumFieldOfViewDegrees);
     public static readonly float MaximumHalfFieldTangent = GetHalfFieldOfViewTangent(MaximumFieldOfViewDegrees);
@@ -60,6 +73,12 @@ internal static class MirageSettings
 
     public static double GetMapAngleRadians(int index)
         => GetMapStartRadians() + index * GetMapSpanRadians() / (MapWidth - 1);
+
+    public static float GetShimmerPhase(int component, double cycles)
+    {
+        var turns = ShimmerOffsetCycles[component] - ShimmerCyclesPerSecond[component] * cycles;
+        return (float)((turns - Math.Floor(turns)) * 2.0 * Math.PI);
+    }
 
     public static float GetHalfFieldOfViewTangent(double fieldOfViewDegrees)
     {
