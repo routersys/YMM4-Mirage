@@ -19,6 +19,13 @@ static const float HalfTexel = 0.5;
 static const float MinimumDepth = 1e-4;
 static const float MinimumShift = 1e-9;
 static const int MaximumTaps = 16;
+static const float MaximumSine = 0.1;
+
+float ArcSine(float value)
+{
+    float squared = value * value;
+    return value * (1.0 + squared * (1.0 / 6.0 + squared * (3.0 / 40.0 + squared * (15.0 / 336.0))));
+}
 
 float ReadShift(float elevation)
 {
@@ -45,8 +52,14 @@ float4 main(
     float3 direction = normalize(float3(scenePosition.xy - center, focalLength));
     float worldDown = direction.y * pitchCosine - direction.z * pitchSine;
     float worldForward = direction.y * pitchSine + direction.z * pitchCosine;
-    float elevation = asin(clamp(-worldDown, -1.0, 1.0));
-    float azimuth = atan2(direction.x, worldForward);
+    float sineElevation = -worldDown;
+    if (abs(sineElevation) > MaximumSine)
+        return source;
+
+    float elevation = ArcSine(sineElevation);
+    float horizontal = sqrt(1.0 - sineElevation * sineElevation);
+    float sinAzimuth = direction.x / horizontal;
+    float cosAzimuth = worldForward / horizontal;
     float pixelAngle = 1.0 / focalLength;
 
     float lowShift = ReadShift(elevation - 0.5 * pixelAngle);
@@ -56,9 +69,6 @@ float4 main(
 
     float stretch = abs(pixelAngle + highShift - lowShift) / pixelAngle;
     float taps = clamp(ceil(stretch), 1.0, (float)MaximumTaps);
-    float sinAzimuth;
-    float cosAzimuth;
-    sincos(azimuth, sinAzimuth, cosAzimuth);
     float4 sum = float4(0.0, 0.0, 0.0, 0.0);
     [loop]
     for (int tap = 0; tap < MaximumTaps; tap++)
