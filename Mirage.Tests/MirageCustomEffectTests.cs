@@ -59,6 +59,8 @@ public sealed class MirageCustomEffectTests
         Assert.Equal(1f, Read(effect, PropertyIndex.HalfFieldTangent));
         Assert.Equal(1f, Read(effect, PropertyIndex.PitchCosine));
         Assert.Equal(0f, Read(effect, PropertyIndex.PitchSine));
+        Assert.Equal(0f, Read(effect, PropertyIndex.ShimmerAmplitude));
+        Assert.All(new[] { PropertyIndex.ShimmerPhase0, PropertyIndex.ShimmerPhase1, PropertyIndex.ShimmerPhase2, PropertyIndex.ShimmerPhase3 }, index => Assert.Equal(0f, Read(effect, index)));
     }
 
     [Theory]
@@ -101,6 +103,51 @@ public sealed class MirageCustomEffectTests
 
         Assert.Equal(expected, Read(effect, PropertyIndex.PitchCosine));
         Assert.Equal(expected, Read(effect, PropertyIndex.PitchSine));
+    }
+
+    [Theory]
+    [InlineData(-1f, 0f)]
+    [InlineData(0f, 0f)]
+    [InlineData(0.0004f, 0.0004f)]
+    [InlineData(0.01f, 0.01f)]
+    [InlineData(0.5f, 0.01f)]
+    [InlineData(float.PositiveInfinity, 0.01f)]
+    [InlineData(float.NegativeInfinity, 0f)]
+    [InlineData(float.NaN, 0f)]
+    public void TheShimmerAmplitudeStaysBetweenZeroAndOneHundredth(float value, float expected)
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var effect = new MirageCustomEffect(context);
+
+        effect.ShimmerAmplitude = value;
+
+        Assert.Equal(expected, Read(effect, PropertyIndex.ShimmerAmplitude));
+    }
+
+    [Theory]
+    [InlineData(-5e4f, -1e4f)]
+    [InlineData(-3f, -3f)]
+    [InlineData(2.5f, 2.5f)]
+    [InlineData(5e4f, 1e4f)]
+    [InlineData(float.PositiveInfinity, 1e4f)]
+    [InlineData(float.NegativeInfinity, -1e4f)]
+    [InlineData(float.NaN, 0f)]
+    public void EveryShimmerPhaseStaysFiniteAndIndependent(float value, float expected)
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var effect = new MirageCustomEffect(context);
+
+        effect.ShimmerPhase0 = value;
+        effect.ShimmerPhase1 = 1f;
+        effect.ShimmerPhase2 = 2f;
+        effect.ShimmerPhase3 = 3f;
+
+        Assert.Equal(expected, Read(effect, PropertyIndex.ShimmerPhase0));
+        Assert.Equal(1f, Read(effect, PropertyIndex.ShimmerPhase1));
+        Assert.Equal(2f, Read(effect, PropertyIndex.ShimmerPhase2));
+        Assert.Equal(3f, Read(effect, PropertyIndex.ShimmerPhase3));
     }
 
     [Theory]
@@ -394,6 +441,88 @@ public sealed class MirageCustomEffectTests
 
         var texels = MirageTable.ToTexels(Enumerable.Repeat(2e-4f, MirageSettings.MapWidth).ToArray());
         AssertFollowsTheModel(rendered, new MirageShaderModel(WideWidth, 40, Stripes, texels, MirageSettings.MinimumHalfFieldTangent, 1f, 0f, 1f), "unfilled");
+    }
+
+    static readonly float[] Phases = [0.5f, 1.5f, 2.5f, 3.5f];
+
+    static void ApplyShimmer(MirageCustomEffect effect, float amplitude, float[] phases)
+    {
+        effect.ShimmerAmplitude = amplitude;
+        effect.ShimmerPhase0 = phases[0];
+        effect.ShimmerPhase1 = phases[1];
+        effect.ShimmerPhase2 = phases[2];
+        effect.ShimmerPhase3 = phases[3];
+    }
+
+    [Theory]
+    [InlineData(3e-4f)]
+    [InlineData(0.01f)]
+    public void TheShimmerFollowsTheModelOfTheShader(float amplitude)
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Gradient);
+        using var map = MapImage.Sloped(context, 5f);
+        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(3d);
+
+        var rendered = Render(context, source, map, effect =>
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = halfTangent;
+            ApplyShimmer(effect, amplitude, Phases);
+        });
+
+        var texels = MirageTable.ToTexels(Enumerable.Range(0, MirageSettings.MapWidth).Select(index => (float)(5f * MirageSettings.GetMapAngleRadians(index))).ToArray());
+        var model = new MirageShaderModel(Width, Height, Gradient, texels, halfTangent, 1f, 0f, 1f, amplitude, Phases);
+        AssertFollowsTheModel(rendered, model, $"shimmer {amplitude}");
+    }
+
+    [Fact]
+    public void WithoutAnAmplitudeThePhasesDoNothing()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Gradient);
+        using var map = MapImage.Sloped(context, 5f);
+        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(3d);
+
+        var plain = Render(context, source, map, effect =>
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = halfTangent;
+        });
+        var phased = Render(context, source, map, effect =>
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = halfTangent;
+            ApplyShimmer(effect, 0f, Phases);
+        });
+
+        Assert.True(plain.SamePixelsAs(phased));
+    }
+
+    [Fact]
+    public void TheShimmerChangesWithThePhases()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Gradient);
+        using var map = MapImage.Sloped(context, 5f);
+        var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(3d);
+
+        Rendering Shaken(float[] phases) => Render(context, source, map, effect =>
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = halfTangent;
+            ApplyShimmer(effect, 6e-4f, phases);
+        });
+
+        var first = Shaken(Phases);
+        var again = Shaken(Phases);
+        var other = Shaken([2.1f, 0.2f, 4.4f, 5.5f]);
+
+        Assert.True(first.SamePixelsAs(again));
+        Assert.False(first.SamePixelsAs(other));
     }
 
     [Fact]

@@ -67,7 +67,10 @@ public sealed class MirageEffectProcessorTests
             }
 
             var pitch = Value(effect.CameraPitch) * MirageSettings.RadiansPerDegree;
-            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts, fill), MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0));
+            var amplitude = (float)(Math.Clamp(Value(effect.Shimmer), 0d, 100d) / 100.0 * MirageSettings.ShimmerAmplitudeRadians);
+            var cycles = Value(effect.ShimmerSpeed) * frame / EffectDescriptions.Fps;
+            var phases = Enumerable.Range(0, 4).Select(component => amplitude > 0f ? MirageSettings.GetShimmerPhase(component, cycles) : 0f).ToArray();
+            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts, fill), MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0), amplitude, phases);
         }
 
         public Bgra Expected(int x, int y) => shader.Shade(x, y);
@@ -238,6 +241,8 @@ public sealed class MirageEffectProcessorTests
         { nameof(MirageEffect.HeatThickness), MirageKind.Inferior, effect => effect.HeatThickness.Values[0].Value = 1.5d },
         { nameof(MirageEffect.FieldOfView), MirageKind.Inferior, effect => effect.FieldOfView.Values[0].Value = 1.5d },
         { nameof(MirageEffect.CameraPitch), MirageKind.Inferior, effect => effect.CameraPitch.Values[0].Value = 0.2d },
+        { nameof(MirageEffect.Shimmer), MirageKind.Inferior, effect => effect.Shimmer.Values[0].Value = 60d },
+        { nameof(MirageEffect.Shimmer), MirageKind.Superior, effect => effect.Shimmer.Values[0].Value = 100d },
         { nameof(MirageEffect.Kind), MirageKind.Inferior, effect => effect.Kind = MirageKind.Superior },
         { nameof(MirageEffect.Kind), MirageKind.Superior, effect => effect.Kind = MirageKind.Inferior },
         { nameof(MirageEffect.EyeHeight), MirageKind.Superior, effect => effect.EyeHeight.Values[0].Value = 6d },
@@ -265,6 +270,80 @@ public sealed class MirageEffectProcessorTests
 
         Assert.False(before.SamePixelsAs(after), setting);
         AssertFollowsTheModel(after, new Model(effect, 3, Pattern), $"{setting} {kind}");
+    }
+
+    [Fact]
+    public void TheShimmerMovesTheMirageFromFrameToFrame()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.Shimmer.Values[0].Value = 80d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var first = RenderFrame(context, processor, 2);
+        var second = RenderFrame(context, processor, 9);
+        var again = RenderFrame(context, processor, 2);
+
+        Assert.False(first.SamePixelsAs(second));
+        Assert.True(first.SamePixelsAs(again));
+        AssertFollowsTheModel(first, new Model(effect, 2, Pattern), "frame 2");
+        AssertFollowsTheModel(second, new Model(effect, 9, Pattern), "frame 9");
+    }
+
+    [Fact]
+    public void WithoutShimmerTheMirageStaysStillAcrossFrames()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = Inferior().CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var first = RenderFrame(context, processor, 1);
+        var second = RenderFrame(context, processor, 17);
+
+        Assert.True(first.SamePixelsAs(second));
+    }
+
+    [Fact]
+    public void TheShimmerSpeedChangesWhereTheWavesAreAtALaterFrame()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.Shimmer.Values[0].Value = 80d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var slow = RenderFrame(context, processor, 12);
+        effect.ShimmerSpeed.Values[0].Value = 3d;
+        var fast = RenderFrame(context, processor, 12);
+
+        Assert.False(slow.SamePixelsAs(fast));
+        AssertFollowsTheModel(fast, new Model(effect, 12, Pattern), "fast");
+    }
+
+    [Fact]
+    public void AShimmerSpeedOfZeroFreezesTheWaves()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.Shimmer.Values[0].Value = 80d;
+        effect.ShimmerSpeed.Values[0].Value = 0d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var first = RenderFrame(context, processor, 0);
+        var later = RenderFrame(context, processor, 20);
+
+        Assert.True(first.SamePixelsAs(later));
+        Assert.False(first.SamePixelsAs(Rendering.Capture(context, source.Bitmap)));
     }
 
     [Fact]

@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Mirage.Tests;
 
-internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bgra> source, float[] texels, float halfFieldTangent, float pitchCosine, float pitchSine, float amount)
+internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bgra> source, float[] texels, float halfFieldTangent, float pitchCosine, float pitchSine, float amount, float shimmerAmplitude = 0f, float[]? shimmerPhases = null)
 {
     const float MinimumDepth = 1e-4f;
     const float MinimumShift = 1e-9f;
@@ -40,6 +40,15 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
         var low = texels[index * MirageSettings.TexelChannels + channel];
         var high = texels[(index + 1) * MirageSettings.TexelChannels + channel];
         return low + (high - low) * (x - index);
+    }
+
+    float Wobble(float elevation, float azimuth)
+    {
+        var sum = 0f;
+        for (var component = 0; component < MirageSettings.ShimmerWeights.Length; component++)
+            sum += MirageSettings.ShimmerWeights[component] * MathF.Sin(shimmerPhases![component] + MirageSettings.ShimmerAzimuthFrequencies[component] * azimuth + MirageSettings.ShimmerElevationFrequencies[component] * elevation);
+
+        return shimmerAmplitude * sum / MirageSettings.ShimmerWeights.Sum();
     }
 
     float ReadShift(float elevation) => Read(elevation, 0);
@@ -84,14 +93,15 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
         var azimuth = MathF.Atan2(direction.X, worldForward);
         var pixelAngle = 1f / focal;
 
-        var lowShift = ReadShift(elevation - 0.5f * pixelAngle);
-        var highShift = ReadShift(elevation + 0.5f * pixelAngle);
-        if (MathF.Abs(lowShift) <= MinimumShift && MathF.Abs(highShift) <= MinimumShift && MathF.Abs(ReadShift(elevation)) <= MinimumShift)
+        var (sinAzimuth, cosAzimuth) = MathF.SinCos(azimuth);
+        var shake = shimmerAmplitude > 0f ? Wobble(elevation, sinAzimuth) : 0f;
+        var lowShift = ReadShift(elevation - 0.5f * pixelAngle + shake);
+        var highShift = ReadShift(elevation + 0.5f * pixelAngle + shake);
+        if (MathF.Abs(lowShift) <= MinimumShift && MathF.Abs(highShift) <= MinimumShift && MathF.Abs(ReadShift(elevation + shake)) <= MinimumShift)
             return ToBgra(original);
 
         var stretch = MathF.Abs(pixelAngle + highShift - lowShift) / pixelAngle;
         var taps = Math.Clamp(MathF.Ceiling(stretch), 1f, MaximumTaps);
-        var (sinAzimuth, cosAzimuth) = MathF.SinCos(azimuth);
         var fillStep = (float)MirageSettings.FillRadiusFraction * width / FillHalfTaps;
         var lowerBound = new Vector2(0.5f, 0.5f);
         var upperBound = new Vector2(width - 0.5f, height - 0.5f);
@@ -99,13 +109,14 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
         for (var tap = 0; tap < MaximumTaps && tap < taps; tap++)
         {
             var sampled = elevation + ((tap + 0.5f) / taps - 0.5f) * pixelAngle;
-            var seen = sampled + ReadShift(sampled);
+            var lookup = sampled + shake;
+            var seen = sampled + ReadShift(lookup);
             var (sinSeen, cosSeen) = MathF.SinCos(seen);
             var seenDown = -sinSeen;
             var seenForward = cosAzimuth * cosSeen;
             var seenDirection = new Vector3(sinAzimuth * cosSeen, seenDown * pitchCosine + seenForward * pitchSine, -seenDown * pitchSine + seenForward * pitchCosine);
             var position = center + focal * new Vector2(seenDirection.X, seenDirection.Y) / MathF.Max(seenDirection.Z, MinimumDepth);
-            if (ReadFill(sampled) > FillThreshold)
+            if (ReadFill(lookup) > FillThreshold)
             {
                 var blurred = Vector4.Zero;
                 for (var offset = -FillHalfTaps; offset <= FillHalfTaps; offset++)
