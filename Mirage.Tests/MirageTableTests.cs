@@ -258,6 +258,80 @@ public sealed class MirageTableTests
     }
 
     [Fact]
+    public void ThePhotoModeMarksTheHeightsThatTheStandardAtmosphereHides()
+    {
+        var shifts = MirageTable.BuildSuperior(10.0, 12.0, 60.0, 10.0, Distance, MirageSource.Photo, Standard.Value, out var fill);
+
+        var first = Array.FindIndex(Standard.Value, value => value >= 0.0);
+        var marked = Enumerable.Range(0, fill.Length).Where(index => fill[index] > 0f).ToArray();
+        Assert.True(marked.Length > 20);
+        Assert.All(marked, index => Assert.InRange(Angle(index) + shifts[index] * Degrees, Angle(first - 1) - 1e-9, Angle(first) + 1e-9));
+        Assert.All(Enumerable.Range(0, fill.Length).Where(index => fill[index] == 0f), index =>
+        {
+            var seen = Angle(index) + shifts[index] * Degrees;
+            Assert.True(seen <= Angle(first - 1) + 1e-9 || seen >= Angle(first) - 1e-9, $"index {index}");
+        });
+    }
+
+    [Fact]
+    public void TheSceneModeHidesNothing()
+    {
+        MirageTable.BuildSuperior(10.0, 12.0, 60.0, 10.0, Distance, MirageSource.Scene, Standard.Value, out var fill);
+
+        Assert.All(fill, value => Assert.Equal(0f, value));
+    }
+
+    [Fact]
+    public void AnAtmosphereWithoutAnInversionFillsNothing()
+    {
+        MirageTable.BuildSuperior(10.0, 0.0, 60.0, 10.0, Distance, MirageSource.Photo, Standard.Value, out var fill);
+
+        Assert.All(fill, value => Assert.Equal(0f, value));
+    }
+
+    [Fact]
+    public void TheHiddenCoordinatesAreTheJumpFromTheLastHitToTheFirstReach()
+    {
+        var standard = new double[MirageSettings.MapWidth];
+        for (var index = 0; index < standard.Length; index++)
+            standard[index] = index < 100 ? -30000.0 + index * 10.0 : 50.0 + index;
+
+        Assert.Equal((-30000.0 + 99 * 10.0, 150.0), MirageTable.HiddenCoordinates(standard));
+    }
+
+    [Fact]
+    public void WithoutAJumpFromHitsToReachesThereAreNoHiddenCoordinates()
+    {
+        var reaches = Enumerable.Range(0, MirageSettings.MapWidth).Select(index => 10.0 + index).ToArray();
+        var hits = Enumerable.Range(0, MirageSettings.MapWidth).Select(index => -5000.0 + index).ToArray();
+
+        var (reachLow, reachHigh) = MirageTable.HiddenCoordinates(reaches);
+        var (hitLow, hitHigh) = MirageTable.HiddenCoordinates(hits);
+
+        Assert.All(new[] { reachLow, reachHigh, hitLow, hitHigh }, value => Assert.True(double.IsNaN(value)));
+    }
+
+    [Fact]
+    public void TheTexelsCarryTheShiftTheFillAndAnOpaqueAlpha()
+    {
+        var shifts = Enumerable.Range(0, MirageSettings.MapWidth).Select(index => index * 1e-6f).ToArray();
+        var fill = Enumerable.Range(0, MirageSettings.MapWidth).Select(index => index % 3 == 0 ? 1f : 0f).ToArray();
+
+        var texels = MirageTable.ToTexels(shifts, fill);
+        var plain = MirageTable.ToTexels(shifts);
+
+        Assert.Equal(MirageSettings.MapWidth * MirageSettings.TexelChannels, texels.Length);
+        Assert.All(Enumerable.Range(0, MirageSettings.MapWidth), index =>
+        {
+            Assert.Equal(shifts[index], texels[index * MirageSettings.TexelChannels]);
+            Assert.Equal(fill[index], texels[index * MirageSettings.TexelChannels + 1]);
+            Assert.Equal(0f, texels[index * MirageSettings.TexelChannels + 2]);
+            Assert.Equal(1f, texels[index * MirageSettings.TexelChannels + 3]);
+            Assert.Equal(0f, plain[index * MirageSettings.TexelChannels + 1]);
+        });
+    }
+
+    [Fact]
     public void TheSceneModeSeesTheGeometricElevationOfTheSameObject()
     {
         var photo = MirageTable.BuildSuperior(10.0, 12.0, 60.0, 10.0, Distance, MirageSource.Photo, Standard.Value);

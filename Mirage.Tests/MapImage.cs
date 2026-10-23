@@ -31,6 +31,9 @@ internal sealed class MapImage : IDisposable
     public static MapImage Constant(IGraphicsDevicesAndContext devices, float shift)
         => new(devices, MirageTable.ToTexels(Enumerable.Repeat(shift, MirageSettings.MapWidth).ToArray()));
 
+    public static MapImage Filled(IGraphicsDevicesAndContext devices, float shift)
+        => new(devices, MirageTable.ToTexels(Enumerable.Repeat(shift, MirageSettings.MapWidth).ToArray(), Enumerable.Repeat(1f, MirageSettings.MapWidth).ToArray()));
+
     public static MapImage Sloped(IGraphicsDevicesAndContext devices, float slope)
         => new(devices, MirageTable.ToTexels(Enumerable.Range(0, MirageSettings.MapWidth).Select(index => (float)(slope * MirageSettings.GetMapAngleRadians(index))).ToArray()));
 

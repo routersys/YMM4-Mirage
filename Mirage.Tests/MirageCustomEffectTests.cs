@@ -347,6 +347,56 @@ public sealed class MirageCustomEffectTests
     }
 
     [Fact]
+    public void AFilledMapAveragesTheNeighborsAlongTheRow()
+    {
+        const int WideWidth = 800;
+        const int WideHeight = 40;
+        static Bgra Stripes(int x, int y) => Bgra.Opaque((byte)(x % 4 < 2 ? 0 : 240), 40, 90);
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, WideWidth, WideHeight, Stripes);
+        using var plain = MapImage.Constant(context, 2e-4f);
+        using var filled = MapImage.Filled(context, 2e-4f);
+
+        void Configure(MirageCustomEffect effect)
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = MirageSettings.MinimumHalfFieldTangent;
+        }
+
+        var sharp = Render(context, source, plain, Configure);
+        var smooth = Render(context, source, filled, Configure);
+
+        var texels = MirageTable.ToTexels(Enumerable.Repeat(2e-4f, MirageSettings.MapWidth).ToArray(), Enumerable.Repeat(1f, MirageSettings.MapWidth).ToArray());
+        AssertFollowsTheModel(smooth, new MirageShaderModel(WideWidth, WideHeight, Stripes, texels, MirageSettings.MinimumHalfFieldTangent, 1f, 0f, 1f), "filled");
+        var row = WideHeight / 2;
+        var sharpRange = Enumerable.Range(100, 400).Select(x => (int)sharp[x, row].Blue).ToArray();
+        var smoothRange = Enumerable.Range(100, 400).Select(x => (int)smooth[x, row].Blue).ToArray();
+        Assert.True(sharpRange.Max() - sharpRange.Min() > 200);
+        Assert.True(smoothRange.Max() - smoothRange.Min() < 90);
+    }
+
+    [Fact]
+    public void AMapWithoutFillLeavesTheRowSharp()
+    {
+        const int WideWidth = 800;
+        static Bgra Stripes(int x, int y) => Bgra.Opaque((byte)(x % 4 < 2 ? 0 : 240), 40, 90);
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        using var source = new SourceImage(context, WideWidth, 40, Stripes);
+        using var map = MapImage.Constant(context, 2e-4f);
+
+        var rendered = Render(context, source, map, effect =>
+        {
+            effect.Amount = 1f;
+            effect.HalfFieldTangent = MirageSettings.MinimumHalfFieldTangent;
+        });
+
+        var texels = MirageTable.ToTexels(Enumerable.Repeat(2e-4f, MirageSettings.MapWidth).ToArray());
+        AssertFollowsTheModel(rendered, new MirageShaderModel(WideWidth, 40, Stripes, texels, MirageSettings.MinimumHalfFieldTangent, 1f, 0f, 1f), "unfilled");
+    }
+
+    [Fact]
     public void TransparentColumnsStayTransparent()
     {
         using var devices = new GraphicsDevices();
