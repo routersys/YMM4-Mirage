@@ -91,14 +91,58 @@ public sealed class MirageTableTests
     }
 
     [Theory]
-    [InlineData(-0.35, 0.366)]
-    [InlineData(-0.20, 0.227)]
-    [InlineData(-0.05, 0.119)]
-    [InlineData(0.0, 0.108)]
-    [InlineData(0.10, 0.147)]
+    [InlineData(-0.35, 0.355)]
+    [InlineData(-0.20, 0.211)]
+    [InlineData(-0.05, 0.095)]
+    [InlineData(0.0, 0.085)]
+    [InlineData(0.10, 0.133)]
     public void TheInferiorMirageShowsTheSkyAboveTheHorizonInsteadOfTheGround(double apparent, double expected)
     {
-        Assert.Equal(expected, Seen(Inferior.Value, apparent), 0.006);
+        Assert.Equal(expected, Seen(Inferior.Value, apparent), 0.002);
+    }
+
+    [Theory]
+    [InlineData(-0.30)]
+    [InlineData(-0.10)]
+    [InlineData(0.0)]
+    [InlineData(0.20)]
+    public void TheInferiorMirageSeesTheDirectionOfTheSameRayInTheUndisturbedAir(double apparent)
+    {
+        const double EyeHeight = 1.5;
+        const double Far = 30000.0;
+        var heated = new Atmosphere(AtmosphereLayer.Heated, 25.0, 0.0, 0.5);
+        var index = IndexOf(apparent);
+        var elevation = RayTracer.Trace(heated, EyeHeight, MirageSettings.GetMapAngleRadians(index), Far, double.PositiveInfinity).Elevation;
+        var low = -0.05 / Degrees;
+        var high = 1.0 / Degrees;
+        for (var step = 0; step < 60; step++)
+        {
+            var middle = 0.5 * (low + high);
+            if (RayTracer.Trace(Atmosphere.Standard, EyeHeight, middle, Far, double.PositiveInfinity).Elevation < elevation)
+                low = middle;
+            else
+                high = middle;
+        }
+
+        Assert.Equal(0.5 * (low + high) * Degrees, Seen(Inferior.Value, apparent), 2e-3);
+    }
+
+    [Theory]
+    [InlineData(2.0, 0.5)]
+    [InlineData(20.0, 3.0)]
+    public void WithoutAnyTemperatureDifferenceTheInferiorMirageChangesNothing(double eyeHeight, double thickness)
+    {
+        var shifts = MirageTable.BuildInferior(eyeHeight, 0.0, thickness);
+
+        Assert.All(shifts, shift => Assert.Equal(0f, shift));
+    }
+
+    [Fact]
+    public void RaysThatBarelyDipIntoTheHotLayerFromAboveAreBarelyShifted()
+    {
+        var shifts = MirageTable.BuildInferior(20.0, 25.0, 0.5);
+
+        Assert.All(Enumerable.Range(IndexOf(-0.1148), IndexOf(-0.1099) - IndexOf(-0.1148)), index => Assert.True(Math.Abs(shifts[index]) * Degrees < 0.01));
     }
 
     [Fact]

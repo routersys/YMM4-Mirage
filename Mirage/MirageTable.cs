@@ -32,16 +32,69 @@ internal static class MirageTable
 
     public static float[] BuildInferior(double eyeHeight, double difference, double thickness)
     {
-        var atmosphere = new Atmosphere(AtmosphereLayer.Heated, difference, 0.0, thickness);
+        var heated = new Atmosphere(AtmosphereLayer.Heated, difference, 0.0, thickness);
+        var unheated = new Atmosphere(AtmosphereLayer.Heated, 0.0, 0.0, thickness);
         var ceiling = MirageSettings.HeatedCeilingFactor * thickness;
-        var shifts = new float[MirageSettings.MapWidth];
-        Parallel.For(0, MirageSettings.MapWidth, index =>
+        var width = MirageSettings.MapWidth;
+        var reference = new double[width];
+        var observed = new double[width];
+        Parallel.For(0, width, index =>
         {
             var angle = MirageSettings.GetMapAngleRadians(index);
-            var result = RayTracer.Trace(atmosphere, eyeHeight, angle, double.PositiveInfinity, ceiling);
-            shifts[index] = result.End is RayEnd.Hit or RayEnd.Passed ? 0f : (float)(result.Elevation - angle);
+            reference[index] = Direction(RayTracer.Trace(unheated, eyeHeight, angle, double.PositiveInfinity, ceiling));
+            observed[index] = Direction(RayTracer.Trace(heated, eyeHeight, angle, double.PositiveInfinity, ceiling));
         });
+
+        var directions = new List<double>(width);
+        var angles = new List<double>(width);
+        for (var index = 0; index < width; index++)
+        {
+            if (double.IsNaN(reference[index]))
+                continue;
+
+            directions.Add(reference[index]);
+            angles.Add(MirageSettings.GetMapAngleRadians(index));
+        }
+
+        var shifts = new float[width];
+        if (directions.Count < 2)
+            return shifts;
+
+        for (var index = 0; index < width; index++)
+        {
+            if (double.IsNaN(observed[index]))
+                continue;
+
+            shifts[index] = (float)(Interpolate(directions, angles, observed[index]) - MirageSettings.GetMapAngleRadians(index));
+        }
+
         return shifts;
+    }
+
+    private static double Direction(RayResult result)
+        => result.End == RayEnd.Exited ? result.Elevation - result.Distance / MirageSettings.EarthRadiusMeters : double.NaN;
+
+    private static double Interpolate(List<double> keys, List<double> values, double key)
+    {
+        var last = keys.Count - 1;
+        if (key <= keys[0])
+            return values[0];
+        if (key >= keys[last])
+            return values[last];
+
+        var low = 0;
+        var high = last;
+        while (high - low > 1)
+        {
+            var middle = (low + high) / 2;
+            if (keys[middle] <= key)
+                low = middle;
+            else
+                high = middle;
+        }
+
+        var fraction = (key - keys[low]) / (keys[high] - keys[low]);
+        return values[low] + fraction * (values[high] - values[low]);
     }
 
     public static float[] ToTexels(float[] shifts)
