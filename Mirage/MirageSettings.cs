@@ -46,6 +46,8 @@ internal static class MirageSettings
     public const double MinimumSlope = 1e-4;
     public const int MaximumSteps = 2_000_000;
     public const int MaximumTaps = 16;
+    public const double FillRadiusFraction = 0.006;
+    public const int FillTaps = 9;
 
     public static readonly float MinimumHalfFieldTangent = GetHalfFieldOfViewTangent(MinimumFieldOfViewDegrees);
     public static readonly float MaximumHalfFieldTangent = GetHalfFieldOfViewTangent(MaximumFieldOfViewDegrees);

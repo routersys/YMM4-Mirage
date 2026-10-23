@@ -54,6 +54,7 @@ public sealed class MirageEffectProcessorTests
             double Value(Animation animation) => animation.GetValue(frame, Length, EffectDescriptions.Fps);
             var eyeHeight = Math.Clamp(Value(effect.EyeHeight), MirageSettings.MinimumEyeHeightMeters, MirageSettings.MaximumEyeHeightMeters);
             float[] shifts;
+            float[]? fill = null;
             if (effect.Kind == MirageKind.Inferior)
             {
                 shifts = MirageTable.BuildInferior(eyeHeight, Value(effect.HeatDifference), Value(effect.HeatThickness));
@@ -61,11 +62,12 @@ public sealed class MirageEffectProcessorTests
             else
             {
                 var distance = Value(effect.Distance) * MirageSettings.MetersPerKilometer;
-                shifts = MirageTable.BuildSuperior(eyeHeight, Value(effect.InversionDifference), Value(effect.InversionHeight), Value(effect.InversionThickness), distance, effect.Source, MirageTable.BuildStandard(eyeHeight, distance));
+                shifts = MirageTable.BuildSuperior(eyeHeight, Value(effect.InversionDifference), Value(effect.InversionHeight), Value(effect.InversionThickness), distance, effect.Source, MirageTable.BuildStandard(eyeHeight, distance), out var unseen);
+                fill = unseen;
             }
 
             var pitch = Value(effect.CameraPitch) * MirageSettings.RadiansPerDegree;
-            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts), MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0));
+            shader = new MirageShaderModel(width, height, source, MirageTable.ToTexels(shifts, fill), MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView)), (float)Math.Cos(pitch), (float)Math.Sin(pitch), (float)(Value(effect.Amount) / 100.0));
         }
 
         public Bgra Expected(int x, int y) => shader.Shade(x, y);

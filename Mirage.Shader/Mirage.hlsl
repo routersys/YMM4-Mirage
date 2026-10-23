@@ -19,6 +19,10 @@ static const float HalfTexel = 0.5;
 static const float MinimumDepth = 1e-4;
 static const float MinimumShift = 1e-9;
 static const int MaximumTaps = 16;
+static const float FillRadiusFraction = 0.006;
+static const int FillHalfTaps = 4;
+static const float FillTaps = 9.0;
+static const float FillThreshold = 0.5;
 static const float MaximumSine = 0.1;
 
 float ArcSine(float value)
@@ -35,6 +39,16 @@ float ReadShift(float elevation)
 
     float2 mapUv = float2((position * (mapWidth - 1.0) + HalfTexel) / mapWidth, HalfTexel);
     return MapTexture.SampleLevel(MapSampler, mapUv, 0).x;
+}
+
+float ReadFill(float elevation)
+{
+    float position = (elevation - mapStart) / mapSpan;
+    if (position < 0.0 || position > 1.0)
+        return 0.0;
+
+    float2 mapUv = float2((position * (mapWidth - 1.0) + HalfTexel) / mapWidth, HalfTexel);
+    return MapTexture.SampleLevel(MapSampler, mapUv, 0).y;
 }
 
 float4 main(
@@ -61,6 +75,7 @@ float4 main(
     float sinAzimuth = direction.x / horizontal;
     float cosAzimuth = worldForward / horizontal;
     float pixelAngle = 1.0 / focalLength;
+    float fillStep = FillRadiusFraction * (inputBounds.z - inputBounds.x) / FillHalfTaps;
 
     float lowShift = ReadShift(elevation - 0.5 * pixelAngle);
     float highShift = ReadShift(elevation + 0.5 * pixelAngle);
@@ -85,8 +100,25 @@ float4 main(
         float seenForward = cosAzimuth * cosSeen;
         float3 seenDirection = float3(sinAzimuth * cosSeen, seenDown * pitchCosine + seenForward * pitchSine, -seenDown * pitchSine + seenForward * pitchCosine);
         float2 seenPosition = center + focalLength * seenDirection.xy / max(seenDirection.z, MinimumDepth);
-        float2 clamped = clamp(seenPosition, inputBounds.xy + HalfTexel, inputBounds.zw - HalfTexel);
-        sum += SourceTexture.SampleLevel(SourceSampler, uv0.xy + (clamped - scenePosition.xy) * uv0.zw, 0);
+        float2 lowerBound = inputBounds.xy + HalfTexel;
+        float2 upperBound = inputBounds.zw - HalfTexel;
+        if (ReadFill(sampled) > FillThreshold)
+        {
+            float4 blurred = float4(0.0, 0.0, 0.0, 0.0);
+            [unroll]
+            for (int offset = -FillHalfTaps; offset <= FillHalfTaps; offset++)
+            {
+                float2 shifted = clamp(seenPosition + float2(offset * fillStep, 0.0), lowerBound, upperBound);
+                blurred += SourceTexture.SampleLevel(SourceSampler, uv0.xy + (shifted - scenePosition.xy) * uv0.zw, 0);
+            }
+
+            sum += blurred / FillTaps;
+        }
+        else
+        {
+            float2 clamped = clamp(seenPosition, lowerBound, upperBound);
+            sum += SourceTexture.SampleLevel(SourceSampler, uv0.xy + (clamped - scenePosition.xy) * uv0.zw, 0);
+        }
     }
 
     return lerp(source, sum / taps, amount);

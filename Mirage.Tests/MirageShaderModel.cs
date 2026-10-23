@@ -8,6 +8,9 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
     const float MinimumShift = 1e-9f;
     const int MaximumTaps = 16;
     const float MaximumSine = 0.1f;
+    const float FillThreshold = 0.5f;
+    const int FillHalfTaps = 4;
+    const float FillTaps = 9f;
 
     readonly Vector4[] pixels = Premultiplied(width, height, source);
 
@@ -26,7 +29,7 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
         return values;
     }
 
-    float ReadShift(float elevation)
+    float Read(float elevation, int channel)
     {
         var position = (elevation - (float)MirageSettings.GetMapStartRadians()) / (float)MirageSettings.GetMapSpanRadians();
         if (position < 0f || position > 1f)
@@ -34,10 +37,14 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
 
         var x = position * (MirageSettings.MapWidth - 1f);
         var index = Math.Min((int)MathF.Floor(x), MirageSettings.MapWidth - 2);
-        var low = texels[index * MirageSettings.TexelChannels];
-        var high = texels[(index + 1) * MirageSettings.TexelChannels];
+        var low = texels[index * MirageSettings.TexelChannels + channel];
+        var high = texels[(index + 1) * MirageSettings.TexelChannels + channel];
         return low + (high - low) * (x - index);
     }
+
+    float ReadShift(float elevation) => Read(elevation, 0);
+
+    float ReadFill(float elevation) => Read(elevation, 1);
 
     Vector4 Sample(Vector2 position)
     {
@@ -85,6 +92,9 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
         var stretch = MathF.Abs(pixelAngle + highShift - lowShift) / pixelAngle;
         var taps = Math.Clamp(MathF.Ceiling(stretch), 1f, MaximumTaps);
         var (sinAzimuth, cosAzimuth) = MathF.SinCos(azimuth);
+        var fillStep = (float)MirageSettings.FillRadiusFraction * width / FillHalfTaps;
+        var lowerBound = new Vector2(0.5f, 0.5f);
+        var upperBound = new Vector2(width - 0.5f, height - 0.5f);
         var sum = Vector4.Zero;
         for (var tap = 0; tap < MaximumTaps && tap < taps; tap++)
         {
@@ -95,7 +105,18 @@ internal sealed class MirageShaderModel(int width, int height, Func<int, int, Bg
             var seenForward = cosAzimuth * cosSeen;
             var seenDirection = new Vector3(sinAzimuth * cosSeen, seenDown * pitchCosine + seenForward * pitchSine, -seenDown * pitchSine + seenForward * pitchCosine);
             var position = center + focal * new Vector2(seenDirection.X, seenDirection.Y) / MathF.Max(seenDirection.Z, MinimumDepth);
-            sum += Sample(Vector2.Clamp(position, new Vector2(0.5f, 0.5f), new Vector2(width - 0.5f, height - 0.5f)));
+            if (ReadFill(sampled) > FillThreshold)
+            {
+                var blurred = Vector4.Zero;
+                for (var offset = -FillHalfTaps; offset <= FillHalfTaps; offset++)
+                    blurred += Sample(Vector2.Clamp(position + new Vector2(offset * fillStep, 0f), lowerBound, upperBound));
+
+                sum += blurred / FillTaps;
+            }
+            else
+            {
+                sum += Sample(Vector2.Clamp(position, lowerBound, upperBound));
+            }
         }
 
         return ToBgra(Vector4.Lerp(original, sum / taps, amount));

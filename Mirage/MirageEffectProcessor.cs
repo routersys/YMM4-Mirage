@@ -88,7 +88,8 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
             _standardKey = standardKey;
         }
 
-        return MirageTable.ToTexels(MirageTable.BuildSuperior(key.EyeHeight, key.InversionDifference, key.InversionHeight, key.InversionThickness, distanceMeters, key.Source, _standard));
+        var shifts = MirageTable.BuildSuperior(key.EyeHeight, key.InversionDifference, key.InversionHeight, key.InversionThickness, distanceMeters, key.Source, _standard, out var fill);
+        return MirageTable.ToTexels(shifts, fill);
     }
 
     private void WriteMap(float[] texels)

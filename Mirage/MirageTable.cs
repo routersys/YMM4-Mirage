@@ -16,9 +16,14 @@ internal static class MirageTable
     }
 
     public static float[] BuildSuperior(double eyeHeight, double difference, double height, double thickness, double distanceMeters, MirageSource source, double[] standard)
+        => BuildSuperior(eyeHeight, difference, height, thickness, distanceMeters, source, standard, out _);
+
+    public static float[] BuildSuperior(double eyeHeight, double difference, double height, double thickness, double distanceMeters, MirageSource source, double[] standard, out float[] fill)
     {
         var atmosphere = new Atmosphere(AtmosphereLayer.Inversion, difference, height, thickness);
         var shifts = new float[MirageSettings.MapWidth];
+        var unseen = new float[MirageSettings.MapWidth];
+        var (gapLow, gapHigh) = HiddenCoordinates(standard);
         Parallel.For(0, MirageSettings.MapWidth, index =>
         {
             var angle = MirageSettings.GetMapAngleRadians(index);
@@ -26,8 +31,17 @@ internal static class MirageTable
             var coordinate = Coordinate(result, distanceMeters);
             var seen = source == MirageSource.Photo ? StandardElevation(standard, coordinate) : GeometricElevation(coordinate, eyeHeight, distanceMeters);
             shifts[index] = (float)(seen - angle);
+            if (source == MirageSource.Photo && coordinate > gapLow && coordinate < gapHigh)
+                unseen[index] = 1f;
         });
+        fill = unseen;
         return shifts;
+    }
+
+    public static (double Low, double High) HiddenCoordinates(double[] standard)
+    {
+        var first = Array.FindIndex(standard, coordinate => coordinate >= 0.0);
+        return first > 0 ? (standard[first - 1], standard[first]) : (double.NaN, double.NaN);
     }
 
     public static float[] BuildInferior(double eyeHeight, double difference, double thickness)
@@ -97,12 +111,14 @@ internal static class MirageTable
         return values[low] + fraction * (values[high] - values[low]);
     }
 
-    public static float[] ToTexels(float[] shifts)
+    public static float[] ToTexels(float[] shifts, float[]? fill = null)
     {
         var texels = new float[shifts.Length * MirageSettings.TexelChannels];
         for (var index = 0; index < shifts.Length; index++)
         {
             texels[index * MirageSettings.TexelChannels] = shifts[index];
+            if (fill is not null)
+                texels[index * MirageSettings.TexelChannels + 1] = fill[index];
             texels[index * MirageSettings.TexelChannels + 3] = 1f;
         }
 
