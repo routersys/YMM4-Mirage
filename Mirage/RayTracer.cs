@@ -25,6 +25,8 @@ internal static class RayTracer
         if (eyeHeight >= ceilingHeight && Math.Sin(elevation) >= 0.0)
             return new RayResult(RayEnd.Exited, eyeHeight, 0.0, elevation);
 
+        var invariant = atmosphere.At(eyeHeight).Index * state.Radius * Math.Cos(elevation);
+
         for (var step = 0; step < MirageSettings.MaximumSteps; step++)
         {
             var slope = Math.Max(Math.Abs(Math.Sin(state.Elevation)), MirageSettings.MinimumSlope);
@@ -55,7 +57,8 @@ internal static class RayTracer
             {
                 var previous = state.Radius - earth;
                 var fraction = (ceilingHeight - previous) / (height - previous);
-                return new RayResult(RayEnd.Exited, ceilingHeight, earth * (state.Arc + fraction * (next.Arc - state.Arc)), state.Elevation + fraction * (next.Elevation - state.Elevation));
+                var cosine = Math.Min(1.0, invariant / (atmosphere.At(ceilingHeight).Index * (earth + ceilingHeight)));
+                return new RayResult(RayEnd.Exited, ceilingHeight, earth * (state.Arc + fraction * (next.Arc - state.Arc)), Math.Acos(cosine));
             }
 
             if (last)

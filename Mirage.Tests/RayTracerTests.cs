@@ -91,11 +91,24 @@ public sealed class RayTracerTests
         var elevation = -0.2 / Degrees;
         var start = Invariant(atmosphere, 1.5, elevation);
 
+        var result = RayTracer.Trace(atmosphere, 1.5, elevation, 100.0, double.PositiveInfinity);
+
+        Assert.Equal(RayEnd.Reached, result.End);
+        Assert.Equal(start, Invariant(atmosphere, result.Height, result.Elevation), start * 1e-9);
+    }
+
+    [Fact]
+    public void TheElevationAtTheCeilingFollowsExactlyFromTheBouguerInvariant()
+    {
+        var atmosphere = new Atmosphere(AtmosphereLayer.Heated, 25.0, 0.0, 0.5);
+        var elevation = -0.2 / Degrees;
+        var start = Invariant(atmosphere, 1.5, elevation);
+
         var result = RayTracer.Trace(atmosphere, 1.5, elevation, double.PositiveInfinity, 5.0);
 
         Assert.Equal(RayEnd.Exited, result.End);
         Assert.Equal(5.0, result.Height, 1e-9);
-        Assert.Equal(start, Invariant(atmosphere, result.Height, result.Elevation), start * 1e-7);
+        Assert.Equal(start, Invariant(atmosphere, result.Height, result.Elevation), start * 1e-13);
     }
 
     [Fact]
