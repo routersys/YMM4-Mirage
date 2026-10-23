@@ -249,13 +249,12 @@ public sealed class MirageTableTests
     }
 
     [Fact]
-    public void AFlatStretchOfTheStandardCoordinateDoesNotDivideByZero()
+    public void AFlatStretchOfTheStandardCoordinateGivesTheLastAngleOfTheStretch()
     {
-        var standard = Enumerable.Repeat(5.0, MirageSettings.MapWidth).ToArray();
+        var standard = Enumerable.Range(0, MirageSettings.MapWidth).Select(index => index < 1000 ? index * 2.0 : index < 1100 ? 2000.0 : 2000.0 + (index - 1099) * 2.0).ToArray();
 
-        var value = MirageTable.StandardElevation(standard, 5.0);
-
-        Assert.True(double.IsFinite(value));
+        Assert.Equal(MirageSettings.GetMapAngleRadians(1099), MirageTable.StandardElevation(standard, 2000.0), 1e-12);
+        Assert.Equal(0.5 * (MirageSettings.GetMapAngleRadians(1099) + MirageSettings.GetMapAngleRadians(1100)), MirageTable.StandardElevation(standard, 2001.0), 1e-12);
     }
 
     [Theory]

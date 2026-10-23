@@ -78,8 +78,7 @@ internal static class MirageTable
                 high = middle;
         }
 
-        var span = standard[high] - standard[low];
-        var fraction = span > 0.0 ? (coordinate - standard[low]) / span : 0.0;
+        var fraction = (coordinate - standard[low]) / (standard[high] - standard[low]);
         return MirageSettings.GetMapAngleRadians(low) + fraction * (MirageSettings.GetMapAngleRadians(high) - MirageSettings.GetMapAngleRadians(low));
     }
 
