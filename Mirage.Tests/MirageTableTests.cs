@@ -75,6 +75,22 @@ public sealed class MirageTableTests
     }
 
     [Theory]
+    [InlineData(1.5, 25.0, 0.5)]
+    [InlineData(2.0, 25.0, 0.5)]
+    [InlineData(2.0, 10.0, 0.5)]
+    [InlineData(6.0, 40.0, 1.0)]
+    public void TheCriticalAngleIsTheAngleOfTheRayThatJustTouchesTheGround(double eyeHeight, double difference, double thickness)
+    {
+        var atmosphere = new Atmosphere(AtmosphereLayer.Heated, difference, 0.0, thickness);
+        var earth = MirageSettings.EarthRadiusMeters;
+        var cosine = atmosphere.At(0.0).Index * earth / (atmosphere.At(eyeHeight).Index * (earth + eyeHeight));
+
+        var critical = CriticalAngle(MirageTable.BuildInferior(eyeHeight, difference, thickness));
+
+        Assert.Equal(-Math.Acos(cosine) * Degrees, critical, 0.002);
+    }
+
+    [Theory]
     [InlineData(-0.35, 0.366)]
     [InlineData(-0.20, 0.227)]
     [InlineData(-0.05, 0.119)]
