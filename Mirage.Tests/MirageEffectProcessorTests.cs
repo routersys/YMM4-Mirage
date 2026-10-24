@@ -437,6 +437,35 @@ public sealed class MirageEffectProcessorTests
         Assert.True(reused.SamePixelsAs(created));
     }
 
+    public static readonly TheoryData<string, Action<MirageEffect>> TableChanges = new()
+    {
+        { nameof(MirageEffect.EyeHeight), effect => effect.EyeHeight.Values[0].Value = 6d },
+        { nameof(MirageEffect.HeatDifference), effect => effect.HeatDifference.Values[0].Value = 45d },
+        { nameof(MirageEffect.HeatThickness), effect => effect.HeatThickness.Values[0].Value = 1.5d },
+    };
+
+    [Theory]
+    [MemberData(nameof(TableChanges))]
+    public void ATableReusedAfterAChangeDrawsTheSameMirageAsANewProcessor(string setting, Action<MirageEffect> change)
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.FieldOfView.Values[0].Value = 1d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var used = effect.CreateVideoEffect(context);
+        used.SetInput(source.Bitmap);
+        RenderFrame(context, used, 3);
+        change(effect);
+        using var fresh = effect.CreateVideoEffect(context);
+        fresh.SetInput(source.Bitmap);
+
+        var reused = RenderFrame(context, used, 3);
+        var created = RenderFrame(context, fresh, 3);
+
+        Assert.True(reused.SamePixelsAs(created), setting);
+    }
+
     [Fact]
     public void AnimatedEyeHeightIsReadAtEachFrame()
     {
