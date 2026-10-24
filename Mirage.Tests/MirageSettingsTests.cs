@@ -64,6 +64,49 @@ public sealed class MirageSettingsTests
     }
 
     [Theory]
+    [InlineData(1280.0, 0.0262, 24427.480916)]
+    [InlineData(640.0, 0.5773503, 554.256258)]
+    [InlineData(64.0, 0.0017453, 18334.4)]
+    public void TheFocalLengthIsHalfTheWidthOverTheHalfFieldTangent(double width, double tangent, double expected)
+    {
+        Assert.Equal(expected, MirageSettings.GetFocalLength(width, tangent), 1.0);
+    }
+
+    [Theory]
+    [InlineData(0.0, 2000.0)]
+    [InlineData(150.0, 2000.0)]
+    [InlineData(-640.0, 900.0)]
+    [InlineData(4000.0, 87.0)]
+    [InlineData(-4000.0, 1663.0)]
+    public void ThePitchDirectionTurnsTheCameraByTheAngleOfThePixelsOfTheHorizonPosition(double position, double focal)
+    {
+        var (cosine, sine) = MirageSettings.GetPitchDirection(position, focal);
+
+        var angle = Math.Atan(position / focal);
+        Assert.Equal((float)Math.Cos(angle), cosine, 1e-6f);
+        Assert.Equal((float)Math.Sin(angle), sine, 1e-6f);
+        Assert.Equal(1f, cosine * cosine + sine * sine, 1e-6f);
+        Assert.True(cosine > 0f);
+    }
+
+    [Theory]
+    [InlineData(120.0, 2000.0)]
+    [InlineData(-640.0, 900.0)]
+    [InlineData(4000.0, 87.0)]
+    public void ThePitchDirectionPutsTheLevelRowAtTheHorizonPosition(double position, double focal)
+    {
+        var (cosine, sine) = MirageSettings.GetPitchDirection(position, focal);
+
+        Assert.Equal(position, focal * sine / cosine, 1e-2);
+    }
+
+    [Fact]
+    public void WithoutAHorizonPositionTheCameraLooksLevel()
+    {
+        Assert.Equal((1f, 0f), MirageSettings.GetPitchDirection(0.0, 1500.0));
+    }
+
+    [Theory]
     [InlineData(60.0, 0.5773503f)]
     [InlineData(1.0, 0.0087269f)]
     [InlineData(0.2, 0.0017453f)]

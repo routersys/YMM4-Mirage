@@ -497,6 +497,45 @@ public sealed class MirageEffectProcessorTests
     }
 
     [Fact]
+    public void AHorizonPositionInAWideViewFollowsTheModelOfTheShader()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        effect.FieldOfView.Values[0].Value = 60d;
+        effect.HorizonPosition.Values[0].Value = 30d;
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+
+        var rendering = RenderFrame(context, processor, 0);
+
+        AssertFollowsTheModel(rendering, new Model(effect, 0, Pattern), "wide view");
+        Assert.True(ChangedPixels(rendering, source) > 0);
+    }
+
+    [Fact]
+    public void ADraggedHorizonMovesTheMirageToTheRowOfTheLine()
+    {
+        using var devices = new GraphicsDevices();
+        using var context = devices.CreateContext();
+        var effect = Inferior();
+        using var source = new SourceImage(context, Width, Height, Pattern);
+        using var processor = effect.CreateVideoEffect(context);
+        processor.SetInput(source.Bitmap);
+        var before = RenderFrame(context, processor, 0);
+        Line(processor)[0].OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, 20f, 0f), ModifierKeys.None));
+
+        var after = RenderFrame(context, processor, 0);
+
+        var changedBefore = Enumerable.Range(0, Height).Where(y => Enumerable.Range(0, Width).Any(x => before[x, y] != source[x, y])).ToArray();
+        var changedAfter = Enumerable.Range(0, Height).Where(y => Enumerable.Range(0, Width).Any(x => after[x, y] != source[x, y])).ToArray();
+        Assert.NotEmpty(changedBefore);
+        Assert.Equal(changedBefore.Min() + 20, changedAfter.Min(), 2.0);
+        Assert.Equal(changedBefore.Max() + 20, changedAfter.Max(), 2.0);
+    }
+
+    [Fact]
     public void TheShimmerMovesTheMirageFromFrameToFrame()
     {
         using var devices = new GraphicsDevices();
