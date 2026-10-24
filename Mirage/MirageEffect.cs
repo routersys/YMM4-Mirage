@@ -86,10 +86,6 @@ public sealed class MirageEffect : VideoEffectBase
     [AnimationSlider("F1", "px", -MirageSettings.HorizonPositionSliderPixels, MirageSettings.HorizonPositionSliderPixels)]
     public Animation HorizonPosition { get; } = new Animation(0, -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
 
-    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.CameraPitch), Description = nameof(Texts.CameraPitchDescription), Order = 22, ResourceType = typeof(Texts))]
-    [AnimationSlider("F2", "°", MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees)]
-    public Animation CameraPitch { get; } = new Animation(0, MirageSettings.MinimumCameraPitchDegrees, MirageSettings.MaximumCameraPitchDegrees);
-
     private IAnimatable[]? _animatables;
 
     public override IEnumerable<string> CreateExoVideoFilters(int keyFrameIndex, ExoOutputDescription exoOutputDescription) => [];
@@ -108,5 +104,5 @@ public sealed class MirageEffect : VideoEffectBase
     }
 
     protected override IEnumerable<IAnimatable> GetAnimatables()
-        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, CameraPitch, HorizonPosition, Shimmer, ShimmerSpeed];
+        => _animatables ??= [Amount, EyeHeight, HeatDifference, HeatThickness, InversionDifference, InversionHeight, InversionThickness, Distance, FieldOfView, HorizonPosition, Shimmer, ShimmerSpeed];
 }

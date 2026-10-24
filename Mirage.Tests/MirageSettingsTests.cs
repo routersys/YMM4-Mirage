@@ -95,6 +95,5 @@ public sealed class MirageSettingsTests
         Assert.True(MirageSettings.MinimumInversionThicknessMeters < MirageSettings.MaximumInversionThicknessMeters);
         Assert.True(MirageSettings.MinimumDistanceKilometers < MirageSettings.MaximumDistanceKilometers);
         Assert.True(MirageSettings.MinimumFieldOfViewDegrees < MirageSettings.MaximumFieldOfViewDegrees);
-        Assert.True(MirageSettings.MinimumCameraPitchDegrees < MirageSettings.MaximumCameraPitchDegrees);
     }
 }

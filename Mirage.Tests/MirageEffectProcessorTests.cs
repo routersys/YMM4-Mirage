@@ -70,7 +70,7 @@ public sealed class MirageEffectProcessorTests
             }
 
             var halfTangent = MirageSettings.GetHalfFieldOfViewTangent(Value(effect.FieldOfView));
-            var pitch = MirageHorizon.Pitch(Value(effect.CameraPitch) * MirageSettings.RadiansPerDegree, Value(effect.HorizonPosition), MirageHorizon.FocalLength(width, halfTangent));
+            var pitch = Math.Atan(Value(effect.HorizonPosition) / (0.5 * width / halfTangent));
             var amplitude = (float)(Math.Clamp(Value(effect.Shimmer), 0d, 100d) / 100.0 * MirageSettings.ShimmerAmplitudeRadians);
             var cycles = Value(effect.ShimmerSpeed) * frame / EffectDescriptions.Fps;
             var phases = Enumerable.Range(0, 4).Select(component => amplitude > 0f ? MirageSettings.GetShimmerPhase(component, cycles) : 0f).ToArray();
@@ -93,8 +93,6 @@ public sealed class MirageEffectProcessorTests
 
     static int ChangedPixels(Rendering rendering, SourceImage source)
         => rendering.Coordinates().Count(point => rendering[point.X, point.Y] != source[point.X, point.Y]);
-
-    static double Focal(double fieldOfView = 3d) => MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(fieldOfView));
 
     static ControllerPoint[] Line(IVideoEffectProcessor processor, int frame = 0)
         => Assert.Single(processor.Update(EffectDescriptions.At(frame, Length)).Controllers).Points.ToArray();
@@ -135,25 +133,6 @@ public sealed class MirageEffectProcessorTests
         Assert.Equal(2, points.Length);
         Assert.Equal(new Vector3(0f, Height / 2f + 40f, 0f), points[0].Position);
         Assert.Equal(new Vector3(Width, Height / 2f + 40f, 0f), points[1].Position);
-    }
-
-    [Fact]
-    public void TheLineSitsWhereTheTiltAndThePositionPutTheHorizon()
-    {
-        using var devices = new GraphicsDevices();
-        using var context = devices.CreateContext();
-        var effect = Inferior();
-        effect.CameraPitch.Values[0].Value = 0.2d;
-        effect.HorizonPosition.Values[0].Value = 40d;
-        using var source = new SourceImage(context, Width, Height, Pattern);
-        using var processor = effect.CreateVideoEffect(context);
-        processor.SetInput(source.Bitmap);
-
-        var line = Line(processor);
-
-        var pitch = 0.2 * MirageSettings.RadiansPerDegree + Math.Atan(40d / Focal());
-        Assert.Equal(Height / 2f + (float)(Focal() * Math.Tan(pitch)), line[0].Position.Y, 1e-3f);
-        Assert.Equal(line[0].Position.Y, line[1].Position.Y);
     }
 
     [Fact]
@@ -227,26 +206,6 @@ public sealed class MirageEffectProcessorTests
         point.OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, float.NaN, 0f), ModifierKeys.None));
 
         Assert.Equal(15d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-9);
-    }
-
-    [Fact]
-    public void WithATiltTheLineStillFollowsTheDragExactly()
-    {
-        using var devices = new GraphicsDevices();
-        using var context = devices.CreateContext();
-        var effect = Inferior();
-        effect.CameraPitch.Values[0].Value = 0.3d;
-        effect.HorizonPosition.Values[0].Value = 25d;
-        using var source = new SourceImage(context, Width, Height, Pattern);
-        using var processor = effect.CreateVideoEffect(context);
-        processor.SetInput(source.Bitmap);
-        var before = Line(processor);
-
-        before[0].OnDrag!(new ControlPointDragEventArgs(new Vector3(0f, 11f, 0f), ModifierKeys.None));
-
-        var after = Line(processor);
-        Assert.Equal(before[0].Position.Y + 11f, after[0].Position.Y, 1e-3f);
-        Assert.NotEqual(25d, effect.HorizonPosition.GetValue(0, Length, EffectDescriptions.Fps), 1e-3);
     }
 
     [Fact]
@@ -504,7 +463,6 @@ public sealed class MirageEffectProcessorTests
         { nameof(MirageEffect.HeatDifference), MirageKind.Inferior, effect => effect.HeatDifference.Values[0].Value = 45d },
         { nameof(MirageEffect.HeatThickness), MirageKind.Inferior, effect => effect.HeatThickness.Values[0].Value = 1.5d },
         { nameof(MirageEffect.FieldOfView), MirageKind.Inferior, effect => effect.FieldOfView.Values[0].Value = 1.5d },
-        { nameof(MirageEffect.CameraPitch), MirageKind.Inferior, effect => effect.CameraPitch.Values[0].Value = 0.2d },
         { nameof(MirageEffect.HorizonPosition), MirageKind.Inferior, effect => effect.HorizonPosition.Values[0].Value = 30d },
         { nameof(MirageEffect.HorizonPosition), MirageKind.Superior, effect => effect.HorizonPosition.Values[0].Value = -20d },
         { nameof(MirageEffect.Shimmer), MirageKind.Inferior, effect => effect.Shimmer.Values[0].Value = 60d },
@@ -536,55 +494,6 @@ public sealed class MirageEffectProcessorTests
 
         Assert.False(before.SamePixelsAs(after), setting);
         AssertFollowsTheModel(after, new Model(effect, 3, Pattern), $"{setting} {kind}");
-    }
-
-    [Fact]
-    public void AHorizonPositionMovesTheMirageLikeTheMatchingTilt()
-    {
-        using var devices = new GraphicsDevices();
-        using var context = devices.CreateContext();
-        var positioned = Inferior();
-        positioned.HorizonPosition.Values[0].Value = 30d;
-        var focal = MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(3d));
-        var tilted = Inferior();
-        tilted.CameraPitch.Values[0].Value = Math.Atan(30d / focal) / MirageSettings.RadiansPerDegree;
-        using var source = new SourceImage(context, Width, Height, Pattern);
-        using var positionedProcessor = positioned.CreateVideoEffect(context);
-        using var tiltedProcessor = tilted.CreateVideoEffect(context);
-        positionedProcessor.SetInput(source.Bitmap);
-        tiltedProcessor.SetInput(source.Bitmap);
-
-        var first = RenderFrame(context, positionedProcessor, 0);
-        var second = RenderFrame(context, tiltedProcessor, 0);
-
-        Assert.True(first.SamePixelsAs(second));
-        Assert.True(ChangedPixels(first, source) > Width * 20);
-    }
-
-    [Fact]
-    public void AHorizonPositionAddsToTheTiltInAWideView()
-    {
-        using var devices = new GraphicsDevices();
-        using var context = devices.CreateContext();
-        var positioned = Inferior();
-        positioned.FieldOfView.Values[0].Value = 60d;
-        positioned.CameraPitch.Values[0].Value = 3d;
-        positioned.HorizonPosition.Values[0].Value = 30d;
-        var focal = MirageHorizon.FocalLength(Width, MirageSettings.GetHalfFieldOfViewTangent(60d));
-        var tilted = Inferior();
-        tilted.FieldOfView.Values[0].Value = 60d;
-        tilted.CameraPitch.Values[0].Value = (3d * MirageSettings.RadiansPerDegree + Math.Atan(30d / focal)) / MirageSettings.RadiansPerDegree;
-        using var source = new SourceImage(context, Width, Height, Pattern);
-        using var positionedProcessor = positioned.CreateVideoEffect(context);
-        using var tiltedProcessor = tilted.CreateVideoEffect(context);
-        positionedProcessor.SetInput(source.Bitmap);
-        tiltedProcessor.SetInput(source.Bitmap);
-
-        var first = RenderFrame(context, positionedProcessor, 0);
-        var second = RenderFrame(context, tiltedProcessor, 0);
-
-        Assert.True(first.SamePixelsAs(second));
-        Assert.True(ChangedPixels(first, source) > 0);
     }
 
     [Fact]

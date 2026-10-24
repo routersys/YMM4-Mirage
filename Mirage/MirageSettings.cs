@@ -33,11 +33,8 @@ internal static class MirageSettings
     public const double MaximumDistanceKilometers = 100.0;
     public const double MinimumFieldOfViewDegrees = 0.2;
     public const double MaximumFieldOfViewDegrees = 60.0;
-    public const double MinimumCameraPitchDegrees = -20.0;
-    public const double MaximumCameraPitchDegrees = 20.0;
     public const double MaximumHorizonPositionPixels = 4000.0;
     public const double HorizonPositionSliderPixels = 1000.0;
-    public const double MaximumPitchRadians = 85.0 * RadiansPerDegree;
     public const double MinimumShimmerPercent = 0.0;
     public const double MaximumShimmerPercent = 100.0;
     public const double MinimumShimmerSpeed = 0.0;
@@ -81,6 +78,15 @@ internal static class MirageSettings
     {
         var turns = ShimmerOffsetCycles[component] - ShimmerCyclesPerSecond[component] * cycles;
         return (float)((turns - Math.Floor(turns)) * 2.0 * Math.PI);
+    }
+
+    public static double GetFocalLength(double width, double halfFieldTangent)
+        => 0.5 * width / halfFieldTangent;
+
+    public static (float Cosine, float Sine) GetPitchDirection(double horizonPosition, double focalLength)
+    {
+        var length = Math.Sqrt(horizonPosition * horizonPosition + focalLength * focalLength);
+        return ((float)(focalLength / length), (float)(horizonPosition / length));
     }
 
     public static float GetHalfFieldOfViewTangent(double fieldOfViewDegrees)
