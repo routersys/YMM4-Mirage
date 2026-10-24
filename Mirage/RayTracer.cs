@@ -29,14 +29,16 @@ internal static class RayTracer
 
         for (var step = 0; step < MirageSettings.MaximumSteps; step++)
         {
-            var slope = Math.Max(Math.Abs(Math.Sin(state.Elevation)), MirageSettings.MinimumSlope);
+            var sine = Math.Sin(state.Elevation);
+            var cosine = Math.Cos(state.Elevation);
+            var slope = Math.Max(Math.Abs(sine), MirageSettings.MinimumSlope);
             var length = Math.Clamp(scale / (MirageSettings.StepsPerLayerThickness * slope), MirageSettings.MinimumStepMeters, MirageSettings.MaximumStepMeters);
-            var remaining = (targetDistance / earth - state.Arc) * state.Radius / Math.Max(Math.Cos(state.Elevation), MirageSettings.MinimumSlope);
+            var remaining = (targetDistance / earth - state.Arc) * state.Radius / Math.Max(cosine, MirageSettings.MinimumSlope);
             var last = remaining <= length;
             if (last)
                 length = Math.Max(remaining, 0.0);
 
-            var next = Advance(atmosphere, state, length);
+            var next = Advance(atmosphere, state, length, sine, cosine);
             var height = next.Radius - earth;
             if (height <= 0.0)
             {
@@ -57,8 +59,8 @@ internal static class RayTracer
             {
                 var previous = state.Radius - earth;
                 var fraction = (ceilingHeight - previous) / (height - previous);
-                var cosine = Math.Min(1.0, invariant / (atmosphere.At(ceilingHeight).Index * (earth + ceilingHeight)));
-                return new RayResult(RayEnd.Exited, ceilingHeight, earth * (state.Arc + fraction * (next.Arc - state.Arc)), Math.Acos(cosine));
+                var exitCosine = Math.Min(1.0, invariant / (atmosphere.At(ceilingHeight).Index * (earth + ceilingHeight)));
+                return new RayResult(RayEnd.Exited, ceilingHeight, earth * (state.Arc + fraction * (next.Arc - state.Arc)), Math.Acos(exitCosine));
             }
 
             if (last)
@@ -74,9 +76,9 @@ internal static class RayTracer
     }
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    private static State Advance(Atmosphere atmosphere, State state, double length)
+    private static State Advance(Atmosphere atmosphere, State state, double length, double sine, double cosine)
     {
-        var (k1e, k1r, k1p) = Derivative(atmosphere, state);
+        var (k1e, k1r, k1p) = Derivative(atmosphere, state, sine, cosine);
         var (k2e, k2r, k2p) = Derivative(atmosphere, Offset(state, 0.5 * length, k1e, k1r, k1p));
         var (k3e, k3r, k3p) = Derivative(atmosphere, Offset(state, 0.5 * length, k2e, k2r, k2p));
         var (k4e, k4r, k4p) = Derivative(atmosphere, Offset(state, length, k3e, k3r, k3p));
@@ -91,9 +93,12 @@ internal static class RayTracer
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     private static (double Elevation, double Radius, double Arc) Derivative(Atmosphere atmosphere, State state)
+        => Derivative(atmosphere, state, Math.Sin(state.Elevation), Math.Cos(state.Elevation));
+
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    private static (double Elevation, double Radius, double Arc) Derivative(Atmosphere atmosphere, State state, double sine, double cosine)
     {
         var (index, gradient) = atmosphere.At(state.Radius - MirageSettings.EarthRadiusMeters);
-        var cosine = Math.Cos(state.Elevation);
-        return (cosine * (1.0 / state.Radius + gradient / index), Math.Sin(state.Elevation), cosine / state.Radius);
+        return (cosine * (1.0 / state.Radius + gradient / index), sine, cosine / state.Radius);
     }
 }

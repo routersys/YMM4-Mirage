@@ -19,11 +19,11 @@ internal readonly record struct Atmosphere(AtmosphereLayer Layer, double Differe
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public double Temperature(double height)
-        => MirageSettings.StandardTemperature - MirageSettings.LapseRate * height + LayerTemperature(height);
+        => MirageSettings.StandardTemperature - MirageSettings.LapseRate * height + LayerValues(height).Temperature;
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public double TemperatureGradient(double height)
-        => -MirageSettings.LapseRate + LayerGradient(height);
+        => -MirageSettings.LapseRate + LayerValues(height).Gradient;
 
     public double Pressure(double height)
         => MirageSettings.StandardPressure * Math.Pow(PressureRatio(height), MirageSettings.BarometricExponent);
@@ -42,10 +42,11 @@ internal readonly record struct Atmosphere(AtmosphereLayer Layer, double Differe
         var power = Math.Pow(ratio, MirageSettings.BarometricExponent - 1.0);
         var pressure = MirageSettings.StandardPressure * power * ratio;
         var pressureGradient = -MirageSettings.StandardPressure * MirageSettings.BarometricExponent * MirageSettings.LapseRate / MirageSettings.StandardTemperature * power;
-        var temperature = Temperature(height);
+        var layer = LayerValues(height);
+        var temperature = MirageSettings.StandardTemperature - MirageSettings.LapseRate * height + layer.Temperature;
         var index = 1.0 + Refractivity * (pressure / MirageSettings.StandardPressure) * (MirageSettings.StandardTemperature / temperature);
         var gradient = Refractivity * MirageSettings.StandardTemperature / MirageSettings.StandardPressure
-            * (pressureGradient / temperature - pressure * TemperatureGradient(height) / (temperature * temperature));
+            * (pressureGradient / temperature - pressure * (-MirageSettings.LapseRate + layer.Gradient) / (temperature * temperature));
         return (index, gradient);
     }
 
@@ -53,26 +54,19 @@ internal readonly record struct Atmosphere(AtmosphereLayer Layer, double Differe
         => 1.0 - MirageSettings.LapseRate * height / MirageSettings.StandardTemperature;
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    private double LayerTemperature(double height)
-        => Layer switch
-        {
-            AtmosphereLayer.Inversion => Difference * 0.5 * (1.0 + Math.Tanh((height - Height) / Thickness)),
-            AtmosphereLayer.Heated => Difference * Math.Exp(-height / Thickness),
-            _ => 0.0,
-        };
-
-    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-    private double LayerGradient(double height)
+    private (double Temperature, double Gradient) LayerValues(double height)
     {
         switch (Layer)
         {
             case AtmosphereLayer.Inversion:
-                var cosine = Math.Cosh((height - Height) / Thickness);
-                return Difference * 0.5 / (Thickness * cosine * cosine);
+                var scaled = (height - Height) / Thickness;
+                var cosine = Math.Cosh(scaled);
+                return (Difference * 0.5 * (1.0 + Math.Tanh(scaled)), Difference * 0.5 / (Thickness * cosine * cosine));
             case AtmosphereLayer.Heated:
-                return -Difference / Thickness * Math.Exp(-height / Thickness);
+                var decay = Math.Exp(-height / Thickness);
+                return (Difference * decay, -Difference / Thickness * decay);
             default:
-                return 0.0;
+                return (0.0, 0.0);
         }
     }
 }
