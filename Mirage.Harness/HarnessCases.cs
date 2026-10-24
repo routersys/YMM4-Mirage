@@ -20,8 +20,6 @@ internal static class HarnessCases
         yield return ("heat-thickness-2.5", Create(effect => effect.HeatThickness.Values[0].Value = 2.5), [0]);
         yield return ("field-of-view-1", Create(effect => effect.FieldOfView.Values[0].Value = 1), [0]);
         yield return ("field-of-view-12", Create(effect => effect.FieldOfView.Values[0].Value = 12), [0]);
-        yield return ("camera-pitch-0.3", Create(effect => effect.CameraPitch.Values[0].Value = 0.3), [0]);
-        yield return ("camera-pitch-minus-0.3", Create(effect => effect.CameraPitch.Values[0].Value = -0.3), [0]);
         yield return ("horizon-position-minus-120", Create(effect => effect.HorizonPosition.Values[0].Value = -120), [0]);
         yield return ("horizon-position-120", Create(effect => effect.HorizonPosition.Values[0].Value = 120), [0]);
         yield return ("horizon-position-animated-frames", Create(effect => effect.HorizonPosition.CopyFrom(Linear(-120d, 120d))), [0, 100, 200, 299]);
@@ -49,7 +47,6 @@ internal static class HarnessCases
         yield return ("heat-difference-25-to-45", () => Create(), effect => effect.HeatDifference.Values[0].Value = 45, 0);
         yield return ("heat-thickness-0.5-to-1.5", () => Create(), effect => effect.HeatThickness.Values[0].Value = 1.5, 0);
         yield return ("field-of-view-3-to-1.5", () => Create(), effect => effect.FieldOfView.Values[0].Value = 1.5, 0);
-        yield return ("camera-pitch-0-to-0.2", () => Create(), effect => effect.CameraPitch.Values[0].Value = 0.2, 0);
         yield return ("horizon-position-0-to-120", () => Create(), effect => effect.HorizonPosition.Values[0].Value = 120, 0);
         yield return ("shimmer-0-to-60", () => Create(), effect => effect.Shimmer.Values[0].Value = 60, 100);
         yield return ("shimmer-speed-1-to-3", () => Create(effect => effect.Shimmer.Values[0].Value = 60), effect => effect.ShimmerSpeed.Values[0].Value = 3, 100);
@@ -67,7 +64,7 @@ internal static class HarnessCases
     {
         yield return ("default", Create());
         yield return ("superior-default", Create(effect => effect.Kind = MirageKind.Superior));
-        yield return ("camera-pitch-animated", Create(effect => effect.CameraPitch.CopyFrom(Linear(-0.3d, 0.3d))));
+        yield return ("horizon-position-animated", Create(effect => effect.HorizonPosition.CopyFrom(Linear(-120d, 120d))));
         yield return ("amount-0", Create(effect => effect.Amount.Values[0].Value = 0));
     }
 
