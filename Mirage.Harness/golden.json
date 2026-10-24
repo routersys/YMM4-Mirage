@@ -95,20 +95,6 @@
       "hash": "CBBFCF677067F53EA8E5BD5152F2F1B2C24022EF0DB2FC0CE42F9CCB2AFE11D9"
     },
     {
-      "name": "camera-pitch-0.3",
-      "frames": [
-        0
-      ],
-      "hash": "EAF43025B6B51AC5B5DB1B245224FE285F65D69DEA246BC251B4A395B4A4BF39"
-    },
-    {
-      "name": "camera-pitch-minus-0.3",
-      "frames": [
-        0
-      ],
-      "hash": "30B445AC2701CEE1E9424237B794538BECF6801D830E94AAFD509F7177DD944F"
-    },
-    {
       "name": "horizon-position-minus-120",
       "frames": [
         0
