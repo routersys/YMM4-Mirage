@@ -91,7 +91,7 @@ $$
 \arctan\frac{h}{f}
 $$
 
-次の画像は、水平線が中心より72px下にある砂漠の写真に、「目の高さ」を1.5m、「画角」を10°にして適用した例で、ほかの項目は既定値です。上が入力、中が「水平線の位置」を72pxにした出力、下が0pxのままにした出力です。72pxにすると蜃気楼が水平線のところに現れます。0pxのままでは、水平線より上の山にかかります。元の写真は冒頭の画像と同じ、Wikimedia CommonsにCC0で公開されているZ3lvs氏の「[Dirt road across a desert flat toward distant mountains near Newberry Springs, California](https://commons.wikimedia.org/wiki/File:Dirt_road_across_a_desert_flat_toward_distant_mountains_near_Newberry_Springs,_California.jpg)」から切り出したものです。
+次の画像は、水平線が中心より72px下にある砂漠の写真に、「目の高さ」を1.5m、「画角」を10°にして適用した例で、ほかの項目は既定値です。上が入力、中が「水平線の位置」を72pxにした出力、下が0pxのままにした出力です。72pxにすると蜃気楼が水平線のところに現れます。0pxのままでは、水平線より上の山にかかります。元の写真は3節の画像と同じ、Wikimedia CommonsにCC0で公開されているZ3lvs氏の「[Dirt road across a desert flat toward distant mountains near Newberry Springs, California](https://commons.wikimedia.org/wiki/File:Dirt_road_across_a_desert_flat_toward_distant_mountains_near_Newberry_Springs,_California.jpg)」から切り出したものです。
 
 ![Image](https://github.com/routersys/YMM4-Mirage/blob/main/docs/Mirage-HorizonPosition.png)
 
@@ -160,7 +160,9 @@ $$
 
 画素の仰角が-0.373°から0°へ上がる間、入力の映像の仰角は約0.38°から約0.085°へ下がります。空の像は上下が逆さになって、地面の側に見えます。画素の仰角が0°付近のとき、入力の映像の仰角は最小の約0.085°になります。入力の映像の仰角が-0.373°から約0.085°の間の部分は、どの画素にも映りません。画素の仰角が0°より上では、入力の映像の仰角は再び上がり、像は入力の映像と同じ上下の向きになります。
 
-冒頭の画像は、砂漠の地面と遠くの山が写る写真に、「目の高さ」を1.5m、「画角」を10°にして適用した例です。ほかの項目は既定値です。写真は、地平線が処理する範囲の中央に来るように切り出しています。上が入力、下が出力です。地平線のすぐ下の地面が、山と空を逆さに映した水面のように見えます。元の写真は、Wikimedia CommonsにCC0で公開されているZ3lvs氏の「[Dirt road across a desert flat toward distant mountains near Newberry Springs, California](https://commons.wikimedia.org/wiki/File:Dirt_road_across_a_desert_flat_toward_distant_mountains_near_Newberry_Springs,_California.jpg)」です。
+次の画像は、砂漠の地面と遠くの山が写る写真に、「目の高さ」を1.5m、「画角」を10°にして適用した例です。ほかの項目は既定値です。写真は、地平線が処理する範囲の中央に来るように切り出しています。上が入力、下が出力です。地平線のすぐ下の地面が、山と空を逆さに映した水面のように見えます。元の写真は、Wikimedia CommonsにCC0で公開されているZ3lvs氏の「[Dirt road across a desert flat toward distant mountains near Newberry Springs, California](https://commons.wikimedia.org/wiki/File:Dirt_road_across_a_desert_flat_toward_distant_mountains_near_Newberry_Springs,_California.jpg)」です。
+
+![Image](https://github.com/routersys/YMM4-Mirage/blob/main/docs/Mirage-Inferior.png)
 
 ### 4. 上位蜃気楼
 
