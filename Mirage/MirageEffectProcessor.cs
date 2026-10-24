@@ -17,8 +17,10 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
     private MirageCustomEffect? _effect;
     private ID2D1Bitmap1? _map;
     private double[]? _standard;
+    private InferiorReference? _reference;
     private bool _isFirst = true;
     private StandardKey _standardKey;
+    private ReferenceKey _referenceKey;
     private MapKey _mapKey;
     private ConstantKey _constantKey;
     private ImmutableList<VideoEffectController> _controllers = [];
@@ -138,7 +140,17 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
     private float[] Build(MapKey key)
     {
         if (key.Kind == MirageKind.Inferior)
-            return MirageTable.ToTexels(MirageTable.BuildInferior(key.EyeHeight, key.HeatDifference, key.HeatThickness));
+        {
+            var referenceKey = new ReferenceKey(key.EyeHeight, key.HeatThickness);
+            if (_reference is not { } reference || _referenceKey != referenceKey)
+            {
+                reference = MirageTable.BuildInferiorReference(key.EyeHeight, key.HeatThickness);
+                _reference = reference;
+                _referenceKey = referenceKey;
+            }
+
+            return MirageTable.ToTexels(MirageTable.BuildInferior(key.EyeHeight, key.HeatDifference, key.HeatThickness, reference));
+        }
 
         var distanceMeters = key.Distance * MirageSettings.MetersPerKilometer;
         var standardKey = new StandardKey(key.EyeHeight, distanceMeters);
@@ -221,6 +233,8 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
     private readonly record struct HorizonLine(float Left, float Right, float Y);
 
     private readonly record struct StandardKey(double EyeHeight, double Distance);
+
+    private readonly record struct ReferenceKey(double EyeHeight, double Thickness);
 
     private readonly record struct MapKey(MirageKind Kind, double EyeHeight, double HeatDifference, double HeatThickness, double InversionDifference, double InversionHeight, double InversionThickness, double Distance, MirageSource Source);
 

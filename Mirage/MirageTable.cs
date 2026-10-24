@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 
 namespace Mirage;
 
+internal readonly record struct InferiorReference(double[] Directions, double[] Angles);
+
 internal static class MirageTable
 {
     public static double[] BuildStandard(double eyeHeight, double distanceMeters)
@@ -48,20 +50,13 @@ internal static class MirageTable
         return first > 0 ? (standard[first - 1], standard[first]) : (double.NaN, double.NaN);
     }
 
-    public static float[] BuildInferior(double eyeHeight, double difference, double thickness)
+    public static InferiorReference BuildInferiorReference(double eyeHeight, double thickness)
     {
-        var heated = new Atmosphere(AtmosphereLayer.Heated, difference, 0.0, thickness);
         var unheated = new Atmosphere(AtmosphereLayer.Heated, 0.0, 0.0, thickness);
         var ceiling = MirageSettings.HeatedCeilingFactor * thickness;
         var width = MirageSettings.MapWidth;
         var reference = new double[width];
-        var observed = new double[width];
-        ForEachRay(index =>
-        {
-            var angle = MirageSettings.GetMapAngleRadians(index);
-            reference[index] = Direction(RayTracer.Trace(unheated, eyeHeight, angle, double.PositiveInfinity, ceiling));
-            observed[index] = Direction(RayTracer.Trace(heated, eyeHeight, angle, double.PositiveInfinity, ceiling));
-        });
+        ForEachRay(index => reference[index] = Direction(RayTracer.Trace(unheated, eyeHeight, MirageSettings.GetMapAngleRadians(index), double.PositiveInfinity, ceiling)));
 
         var directions = new List<double>(width);
         var angles = new List<double>(width);
@@ -74,16 +69,29 @@ internal static class MirageTable
             angles.Add(MirageSettings.GetMapAngleRadians(index));
         }
 
+        return new InferiorReference([.. directions], [.. angles]);
+    }
+
+    public static float[] BuildInferior(double eyeHeight, double difference, double thickness)
+        => BuildInferior(eyeHeight, difference, thickness, BuildInferiorReference(eyeHeight, thickness));
+
+    public static float[] BuildInferior(double eyeHeight, double difference, double thickness, InferiorReference reference)
+    {
+        var heated = new Atmosphere(AtmosphereLayer.Heated, difference, 0.0, thickness);
+        var ceiling = MirageSettings.HeatedCeilingFactor * thickness;
+        var width = MirageSettings.MapWidth;
         var shifts = new float[width];
-        if (directions.Count < 2)
+        if (reference.Directions.Length < 2)
             return shifts;
 
+        var observed = new double[width];
+        ForEachRay(index => observed[index] = Direction(RayTracer.Trace(heated, eyeHeight, MirageSettings.GetMapAngleRadians(index), double.PositiveInfinity, ceiling)));
         for (var index = 0; index < width; index++)
         {
             if (double.IsNaN(observed[index]))
                 continue;
 
-            shifts[index] = (float)(Interpolate(directions, angles, observed[index]) - MirageSettings.GetMapAngleRadians(index));
+            shifts[index] = (float)(Interpolate(reference.Directions, reference.Angles, observed[index]) - MirageSettings.GetMapAngleRadians(index));
         }
 
         return shifts;
@@ -92,9 +100,9 @@ internal static class MirageTable
     private static double Direction(RayResult result)
         => result.End == RayEnd.Exited ? result.Elevation - result.Distance / MirageSettings.EarthRadiusMeters : double.NaN;
 
-    private static double Interpolate(List<double> keys, List<double> values, double key)
+    private static double Interpolate(double[] keys, double[] values, double key)
     {
-        var last = keys.Count - 1;
+        var last = keys.Length - 1;
         if (key <= keys[0])
             return values[0];
         if (key >= keys[last])
