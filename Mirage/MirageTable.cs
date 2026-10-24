@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace Mirage;
@@ -7,7 +8,7 @@ internal static class MirageTable
     public static double[] BuildStandard(double eyeHeight, double distanceMeters)
     {
         var coordinates = new double[MirageSettings.MapWidth];
-        Parallel.For(0, MirageSettings.MapWidth, index =>
+        ForEachRay(index =>
         {
             var result = RayTracer.Trace(Atmosphere.Standard, eyeHeight, MirageSettings.GetMapAngleRadians(index), distanceMeters, double.PositiveInfinity);
             coordinates[index] = Coordinate(result, distanceMeters);
@@ -24,7 +25,7 @@ internal static class MirageTable
         var shifts = new float[MirageSettings.MapWidth];
         var unseen = new float[MirageSettings.MapWidth];
         var (gapLow, gapHigh) = HiddenCoordinates(standard);
-        Parallel.For(0, MirageSettings.MapWidth, index =>
+        ForEachRay(index =>
         {
             var angle = MirageSettings.GetMapAngleRadians(index);
             var result = RayTracer.Trace(atmosphere, eyeHeight, angle, distanceMeters, double.PositiveInfinity);
@@ -37,6 +38,9 @@ internal static class MirageTable
         fill = unseen;
         return shifts;
     }
+
+    private static void ForEachRay(Action<int> trace)
+        => Parallel.ForEach(Partitioner.Create(0, MirageSettings.MapWidth, 1), range => trace(range.Item1));
 
     public static (double Low, double High) HiddenCoordinates(double[] standard)
     {
@@ -52,7 +56,7 @@ internal static class MirageTable
         var width = MirageSettings.MapWidth;
         var reference = new double[width];
         var observed = new double[width];
-        Parallel.For(0, width, index =>
+        ForEachRay(index =>
         {
             var angle = MirageSettings.GetMapAngleRadians(index);
             reference[index] = Direction(RayTracer.Trace(unheated, eyeHeight, angle, double.PositiveInfinity, ceiling));
