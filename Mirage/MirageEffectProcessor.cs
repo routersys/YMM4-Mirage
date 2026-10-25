@@ -62,10 +62,7 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
             return draw;
         }
 
-        var eyeHeight = Math.Clamp(_item.EyeHeight.GetValue(frame, length, fps), MirageSettings.MinimumEyeHeightMeters, MirageSettings.MaximumEyeHeightMeters);
-        var mapKey = _item.Kind == MirageKind.Inferior
-            ? new MapKey(MirageKind.Inferior, eyeHeight, Math.Clamp(_item.HeatDifference.GetValue(frame, length, fps), MirageSettings.MinimumHeatDifference, MirageSettings.MaximumHeatDifference), Math.Clamp(_item.HeatThickness.GetValue(frame, length, fps), MirageSettings.MinimumHeatThicknessMeters, MirageSettings.MaximumHeatThicknessMeters), 0.0, 0.0, 0.0, 0.0, default)
-            : new MapKey(MirageKind.Superior, eyeHeight, 0.0, 0.0, Math.Clamp(_item.InversionDifference.GetValue(frame, length, fps), MirageSettings.MinimumInversionDifference, MirageSettings.MaximumInversionDifference), Math.Clamp(_item.InversionHeight.GetValue(frame, length, fps), MirageSettings.MinimumInversionHeightMeters, MirageSettings.MaximumInversionHeightMeters), Math.Clamp(_item.InversionThickness.GetValue(frame, length, fps), MirageSettings.MinimumInversionThicknessMeters, MirageSettings.MaximumInversionThicknessMeters), Math.Clamp(_item.Distance.GetValue(frame, length, fps), MirageSettings.MinimumDistanceKilometers, MirageSettings.MaximumDistanceKilometers), _item.Source);
+        var mapKey = GetMapKey(frame, length, fps);
         if (_isFirst || _mapKey != mapKey)
         {
             WriteMap(Build(mapKey));
@@ -96,6 +93,26 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
         _constantKey = constantKey;
         _isFirst = false;
         return draw;
+    }
+
+    private MapKey GetMapKey(long frame, long length, int fps)
+    {
+        var eyeHeight = Math.Clamp(_item.EyeHeight.GetValue(frame, length, fps), MirageSettings.MinimumEyeHeightMeters, MirageSettings.MaximumEyeHeightMeters);
+        if (_item.Kind == MirageKind.Inferior)
+        {
+            return MapKey.Inferior(
+                eyeHeight,
+                Math.Clamp(_item.HeatDifference.GetValue(frame, length, fps), MirageSettings.MinimumHeatDifference, MirageSettings.MaximumHeatDifference),
+                Math.Clamp(_item.HeatThickness.GetValue(frame, length, fps), MirageSettings.MinimumHeatThicknessMeters, MirageSettings.MaximumHeatThicknessMeters));
+        }
+
+        return MapKey.Superior(
+            eyeHeight,
+            Math.Clamp(_item.InversionDifference.GetValue(frame, length, fps), MirageSettings.MinimumInversionDifference, MirageSettings.MaximumInversionDifference),
+            Math.Clamp(_item.InversionHeight.GetValue(frame, length, fps), MirageSettings.MinimumInversionHeightMeters, MirageSettings.MaximumInversionHeightMeters),
+            Math.Clamp(_item.InversionThickness.GetValue(frame, length, fps), MirageSettings.MinimumInversionThicknessMeters, MirageSettings.MaximumInversionThicknessMeters),
+            Math.Clamp(_item.Distance.GetValue(frame, length, fps), MirageSettings.MinimumDistanceKilometers, MirageSettings.MaximumDistanceKilometers),
+            _item.Source);
     }
 
     private (HorizonLine? Line, float PitchCosine, float PitchSine) GetHorizon(float halfTangent, double position)
@@ -236,7 +253,23 @@ internal sealed class MirageEffectProcessor(IGraphicsDevicesAndContext devices, 
 
     private readonly record struct ReferenceKey(double EyeHeight, double Thickness);
 
-    private readonly record struct MapKey(MirageKind Kind, double EyeHeight, double HeatDifference, double HeatThickness, double InversionDifference, double InversionHeight, double InversionThickness, double Distance, MirageSource Source);
+    private readonly record struct MapKey(
+        MirageKind Kind,
+        double EyeHeight,
+        double HeatDifference,
+        double HeatThickness,
+        double InversionDifference,
+        double InversionHeight,
+        double InversionThickness,
+        double Distance,
+        MirageSource Source)
+    {
+        public static MapKey Inferior(double eyeHeight, double heatDifference, double heatThickness)
+            => new(MirageKind.Inferior, eyeHeight, heatDifference, heatThickness, default, default, default, default, default);
+
+        public static MapKey Superior(double eyeHeight, double inversionDifference, double inversionHeight, double inversionThickness, double distance, MirageSource source)
+            => new(MirageKind.Superior, eyeHeight, default, default, inversionDifference, inversionHeight, inversionThickness, distance, source);
+    }
 
     private readonly record struct ConstantKey(float Amount, float HalfFieldTangent, float PitchCosine, float PitchSine, float ShimmerAmplitude, float ShimmerPhase0, float ShimmerPhase1, float ShimmerPhase2, float ShimmerPhase3);
 }
