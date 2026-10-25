@@ -176,6 +176,18 @@ public sealed class MirageEffectTests
         Assert.Equal(typeof(Texts), display.ResourceType);
     }
 
+    [Fact]
+    public void NoTwoParametersShareAnOrder()
+    {
+        var orders = typeof(MirageEffect).GetProperties()
+            .Select(property => property.GetCustomAttribute<DisplayAttribute>())
+            .OfType<DisplayAttribute>()
+            .Select(display => display.Order)
+            .ToArray();
+
+        Assert.Equal(orders.Length, orders.Distinct().Count());
+    }
+
     [Theory]
     [InlineData(nameof(MirageEffect.Amount), "F1", "%", 0d, 100d)]
     [InlineData(nameof(MirageEffect.EyeHeight), "F1", "m", 0.5d, 20d)]
