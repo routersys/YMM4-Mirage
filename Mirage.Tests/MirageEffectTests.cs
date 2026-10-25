@@ -163,8 +163,8 @@ public sealed class MirageEffectTests
     [InlineData(nameof(MirageEffect.Source), nameof(Texts.AtmosphereGroup), nameof(Texts.Source), nameof(Texts.SourceDescription), 18)]
     [InlineData(nameof(MirageEffect.Shimmer), nameof(Texts.AtmosphereGroup), nameof(Texts.Shimmer), nameof(Texts.ShimmerDescription), 19)]
     [InlineData(nameof(MirageEffect.ShimmerSpeed), nameof(Texts.AtmosphereGroup), nameof(Texts.ShimmerSpeed), nameof(Texts.ShimmerSpeedDescription), 20)]
-    [InlineData(nameof(MirageEffect.FieldOfView), nameof(Texts.CameraGroup), nameof(Texts.FieldOfView), nameof(Texts.FieldOfViewDescription), 20)]
-    [InlineData(nameof(MirageEffect.HorizonPosition), nameof(Texts.CameraGroup), nameof(Texts.HorizonPosition), nameof(Texts.HorizonPositionDescription), 21)]
+    [InlineData(nameof(MirageEffect.FieldOfView), nameof(Texts.CameraGroup), nameof(Texts.FieldOfView), nameof(Texts.FieldOfViewDescription), 30)]
+    [InlineData(nameof(MirageEffect.HorizonPosition), nameof(Texts.CameraGroup), nameof(Texts.HorizonPosition), nameof(Texts.HorizonPositionDescription), 31)]
     public void EveryParameterIsDisplayedInItsGroupInOrder(string property, string group, string name, string description, int order)
     {
         var display = Attribute<DisplayAttribute>(property);

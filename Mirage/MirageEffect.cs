@@ -78,11 +78,11 @@ public sealed class MirageEffect : VideoEffectBase
     [AnimationSlider("F2", "×", MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed)]
     public Animation ShimmerSpeed { get; } = new Animation(MirageSettings.DefaultShimmerSpeed, MirageSettings.MinimumShimmerSpeed, MirageSettings.MaximumShimmerSpeed);
 
-    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.FieldOfView), Description = nameof(Texts.FieldOfViewDescription), Order = 20, ResourceType = typeof(Texts))]
+    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.FieldOfView), Description = nameof(Texts.FieldOfViewDescription), Order = 30, ResourceType = typeof(Texts))]
     [AnimationSlider("F2", "°", MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees)]
     public Animation FieldOfView { get; } = new Animation(3, MirageSettings.MinimumFieldOfViewDegrees, MirageSettings.MaximumFieldOfViewDegrees);
 
-    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.HorizonPosition), Description = nameof(Texts.HorizonPositionDescription), Order = 21, ResourceType = typeof(Texts))]
+    [Display(GroupName = nameof(Texts.CameraGroup), Name = nameof(Texts.HorizonPosition), Description = nameof(Texts.HorizonPositionDescription), Order = 31, ResourceType = typeof(Texts))]
     [AnimationSlider("F1", "px", -MirageSettings.HorizonPositionSliderPixels, MirageSettings.HorizonPositionSliderPixels)]
     public Animation HorizonPosition { get; } = new Animation(0, -MirageSettings.MaximumHorizonPositionPixels, MirageSettings.MaximumHorizonPositionPixels);
 
